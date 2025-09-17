@@ -17,6 +17,7 @@ from .services import DiagramService, ClassEntityService
 class VistaConjuntoDiagramas(viewsets.ModelViewSet):
     """Conjunto de vistas para operaciones CRUD de diagramas"""
     queryset = Diagrama.objects.all()
+    serializer_class = SerializadorDiagrama
     service = DiagramService()
 
     def obtener_clase_serializador(self):
