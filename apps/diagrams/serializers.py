@@ -57,6 +57,19 @@ class SerializadorRelacion(serializers.ModelSerializer):
 
 
 class SerializadorDiagrama(serializers.ModelSerializer):
+    def update(self, instance, validated_data):
+        # Llama al service para actualizar correctamente el diagrama y sus relaciones
+        from .services import DiagramService
+        service = DiagramService()
+        # validated_data puede no tener clases/relaciones si el request es PATCH parcial
+        data = dict(validated_data)
+        # Agrega los datos originales si no están en validated_data
+        if 'classes' not in data:
+            data['classes'] = self.initial_data.get('classes', [])
+        if 'relationships' not in data:
+            data['relationships'] = self.initial_data.get('relationships', [])
+        updated = service.actualizar_diagrama(str(instance.id), data)
+        return updated
     """Serializador para diagramas"""
     classes = SerializadorEntidadClase(many=True, read_only=True)
     relationships = SerializadorRelacion(many=True, read_only=True)
