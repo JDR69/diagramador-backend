@@ -74,16 +74,28 @@ WSGI_APPLICATION = 'diagram_backend.wsgi.application'
 ASGI_APPLICATION = 'diagram_backend.asgi.application'
 
 # Base de datos
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': config('POSTGRES_DB', default='diagramdb'),
-        'USER': config('POSTGRES_USER', default='diagramuser'),
-        'PASSWORD': config('POSTGRES_PASSWORD', default='diagramsecret'),
-        'HOST': config('POSTGRES_HOST', default='localhost'),
-        'PORT': config('POSTGRES_PORT', default='5432'),
+# Usar URL completa para PostgreSQL de Render
+import dj_database_url
+
+DATABASE_URL = config('DATABASE_URL', default=None)
+if DATABASE_URL:
+    DATABASES = {
+        'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600)
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': config('POSTGRES_DB', default='diagramdb'),
+            'USER': config('POSTGRES_USER', default='diagramuser'),
+            'PASSWORD': config('POSTGRES_PASSWORD', default='diagramsecret'),
+            'HOST': config('POSTGRES_HOST', default='localhost'),
+            'PORT': config('POSTGRES_PORT', default='5432'),
+            'OPTIONS': {
+                'sslmode': 'require',
+            },
+        }
+    }
 
 # Validación de contraseñas
 AUTH_PASSWORD_VALIDATORS = [
