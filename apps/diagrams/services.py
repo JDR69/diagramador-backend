@@ -148,20 +148,20 @@ class DiagramService:
 
     def _actualizar_relaciones(self, diagram: Diagrama, relationships_data: List[Dict]):
         """Actualizar relaciones de un diagrama"""
-        from .models import Relacion
+        from .models import Relacion, EntidadClase
         # Eliminar relaciones existentes
         diagram.relationships.all().delete()
 
-        # Mapear clases por nombre
-        class_mapping = {cls.name: cls for cls in diagram.classes.all()}
+        # Mapear clases por id
+        class_mapping = {str(cls.id): cls for cls in diagram.classes.all()}
 
         for rel_data in relationships_data:
-            from_name = rel_data.get('from')
-            to_name = rel_data.get('to')
+            from_id = str(rel_data.get('from'))
+            to_id = str(rel_data.get('to'))
             rel_type = rel_data.get('type', 'association')
             cardinality = rel_data.get('cardinality', {'from': '1', 'to': '1'})
-            from_class = class_mapping.get(from_name)
-            to_class = class_mapping.get(to_name)
+            from_class = class_mapping.get(from_id)
+            to_class = class_mapping.get(to_id)
             if from_class and to_class:
                 Relacion.objects.create(
                     diagram=diagram,
