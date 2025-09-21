@@ -146,10 +146,13 @@ CORS_ALLOWED_ORIGINS = [
 
 CORS_ALLOW_ALL_ORIGINS = DEBUG
 
-# Configuración de Channels
+# Configuración de Channels para producción (Redis)
 CHANNEL_LAYERS = {
     'default': {
-        'BACKEND': 'channels.layers.InMemoryChannelLayer',
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            'hosts': [config('REDIS_URL', default='redis://localhost:6379')],
+        },
     },
 }
 
