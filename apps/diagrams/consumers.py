@@ -2,7 +2,7 @@ import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 
 # Consumidor WebSocket para colaboración en diagramas
-class ConsumidorColaboracion(AsyncWebsocketConsumer):
+class CollaborationConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.diagram_id = self.scope['url_route']['kwargs']['diagram_id']
         self.room_group_name = f'collaboration_{self.diagram_id}'
