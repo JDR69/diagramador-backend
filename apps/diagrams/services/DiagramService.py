@@ -127,39 +127,42 @@ class DiagramService:
 
     def _actualizar_relaciones(self, diagrama: Diagrama, datos_relaciones: List[Dict]):
         """Actualizar relaciones de un diagrama"""
-        # Eliminar relaciones existentes
-        diagrama.relationships.all().delete()
+        import logging
+        logger = logging.getLogger(__name__)
         
-        # Crear mapa de clases por ID y por nombre para poder buscar por cualquiera
-        mapeo_clases_id = {str(cls.id): cls for cls in diagrama.classes.all()}
-        
-        for rel_data in datos_relaciones:
-            # Los datos pueden venir con "from"/"to" como ID o como nombre
-            desde_id = str(rel_data.get('from', ''))
-            hasta_id = str(rel_data.get('to', ''))
-            
-            # Buscar clases por ID
-            desde_clase = mapeo_clases_id.get(desde_id)
-            hasta_clase = mapeo_clases_id.get(hasta_id)
-            
-            # Si no encontramos por ID, podrían ser referencias por nombre
-            if not (desde_clase and hasta_clase) and 'name' in rel_data:
-                # Intentar buscar por nombre
-                desde_nombre = rel_data.get('fromName', '')
-                hasta_nombre = rel_data.get('toName', '')
-                mapeo_nombre = {cls.name: cls for cls in diagrama.classes.all()}
+        try:
+            # Eliminar relaciones existentes
+            logger.info(f"Eliminando {diagrama.relationships.count()} relaciones existentes")
+            diagrama.relationships.all().delete()
+
+            # Crear mapeo de clases
+            mapeo_clases_id = {str(cls.id): cls for cls in diagrama.classes.all()}
+            logger.info(f"Mapeo de clases: {list(mapeo_clases_id.keys())}")
+
+            for i, rel_data in enumerate(datos_relaciones):
+                logger.info(f"Procesando relación {i}: {rel_data}")
                 
-                desde_clase = desde_clase or mapeo_nombre.get(desde_nombre)
-                hasta_clase = hasta_clase or mapeo_nombre.get(hasta_nombre)
-            
-            if desde_clase and hasta_clase:
+                # Obtener IDs
+                desde_id = str(rel_data.get('from', ''))
+                hasta_id = str(rel_data.get('to', ''))
+                
+                # Buscar clases
+                desde_clase = mapeo_clases_id.get(desde_id)
+                hasta_clase = mapeo_clases_id.get(hasta_id)
+                
+                if not desde_clase:
+                    logger.warning(f"Clase 'from' no encontrada: {desde_id}")
+                    continue
+                    
+                if not hasta_clase:
+                    logger.warning(f"Clase 'to' no encontrada: {hasta_id}")
+                    continue
+                
+                # Crear relación
                 tipo = rel_data.get('type', 'association')
                 cardinalidad = rel_data.get('cardinality', {'from': '1', 'to': '1'})
                 
-                # Debuggear
-                print(f"Creando relación: {desde_clase.name} -> {hasta_clase.name}, tipo: {tipo}")
-                
-                Relacion.objects.create(
+                relacion = Relacion.objects.create(
                     diagram=diagrama,
                     from_class=desde_clase,
                     to_class=hasta_clase,
@@ -167,6 +170,11 @@ class DiagramService:
                     cardinality_from=cardinalidad.get('from', '1'),
                     cardinality_to=cardinalidad.get('to', '1')
                 )
+                logger.info(f"Relación creada: {relacion.id}")
+                
+        except Exception as e:
+            logger.error(f"Error actualizando relaciones: {str(e)}", exc_info=True)
+            raise
 
     def obtener_diagrama_con_detalles(self, diagrama_id: str) -> Optional[Diagrama]:
         """Obtener diagrama con todos los datos relacionados"""

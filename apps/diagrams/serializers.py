@@ -62,7 +62,7 @@ class SerializadorRelacion(serializers.ModelSerializer):
 class SerializadorDiagrama(serializers.ModelSerializer):
     """Serializador para diagramas"""
     classes = SerializadorEntidadClase(many=True, read_only=True)
-    relationships = SerializadorRelacion(many=True, read_only=False)
+    relationships = SerializadorRelacion(many=True, read_only=True)
     
     class Meta:
         model = Diagrama
@@ -82,21 +82,26 @@ class SerializadorDiagrama(serializers.ModelSerializer):
         return Response(serializador_respuesta.data)
 
     def update(self, instance, validated_data):
-        # Para actualizaciones parciales, usamos directamente el servicio
-        # y pasamos los datos raw del request que pueden incluir relaciones y clases
-        from .services import DiagramService
-        service = DiagramService()
-        
-        # Combinar validated_data con datos originales si es parcial
-        data = dict(validated_data)
-        if self.partial:
-            if 'classes' in self.initial_data:
-                data['classes'] = self.initial_data['classes']
-            if 'relationships' in self.initial_data:
-                data['relationships'] = self.initial_data['relationships']
-        
-        updated = service.actualizar_diagrama(str(instance.id), data)
-        return updated
+        try:
+            # Usar el servicio para actualizar
+            from .services.DiagramService import ServicioDiagrama
+            servicio = ServicioDiagrama()
+            
+            # Combinar datos validados con datos del request original
+            data = dict(validated_data)
+            if self.partial and hasattr(self, 'initial_data'):
+                if 'classes' in self.initial_data:
+                    data['classes'] = self.initial_data['classes']
+                if 'relationships' in self.initial_data:
+                    data['relationships'] = self.initial_data['relationships']
+            
+            updated = servicio.actualizar_diagrama(str(instance.id), data)
+            return updated
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error en serializador update: {str(e)}", exc_info=True)
+            raise
 
 
 class SerializadorCrearDiagrama(serializers.ModelSerializer):

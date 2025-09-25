@@ -2,10 +2,13 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
+import logging
 
 from ..models import Diagrama
 from ..serializers import SerializadorDiagrama, SerializadorCrearDiagrama
 from ..services.DiagramService import DiagramService
+
+logger = logging.getLogger(__name__)
 
 class VistaConjuntoDiagramas(viewsets.ModelViewSet):
     """Conjunto de vistas para operaciones CRUD de diagramas"""
@@ -40,6 +43,7 @@ class VistaConjuntoDiagramas(viewsets.ModelViewSet):
     def update(self, request, pk=None, partial=False):
         """Actualizar diagrama"""
         try:
+            logger.info(f"DATOS RECIBIDOS EN PATCH: {request.data}")
             instance = self.get_object()
             serializador = self.get_serializer(instance, data=request.data, partial=partial)
             serializador.is_valid(raise_exception=True)
@@ -47,8 +51,7 @@ class VistaConjuntoDiagramas(viewsets.ModelViewSet):
             serializador_respuesta = self.get_serializer(diagrama)
             return Response(serializador_respuesta.data)
         except Exception as e:
-            from django.db import connection
-            connection.close()
+            logger.error(f"Error en update: {str(e)}", exc_info=True)
             return Response(
                 {'error': f'Error procesando la solicitud: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -167,4 +170,42 @@ class VistaConjuntoDiagramas(viewsets.ModelViewSet):
             'relations_count': len(relations), 
             'relations': relations,
             'classes': classes
+        })
+
+    @action(detail=True, methods=['get'])
+    def debug_state(self, request, pk=None):
+        """Ver estado completo del diagrama"""
+        diagrama = self.get_object()
+        
+        classes_data = []
+        for cls in diagrama.classes.all():
+            classes_data.append({
+                'id': str(cls.id),
+                'name': cls.name,
+                'position': {'x': cls.position_x, 'y': cls.position_y},
+                'attributes': [attr.name for attr in cls.attributes.all()]
+            })
+        
+        relations_data = []
+        for rel in diagrama.relationships.all():
+            relations_data.append({
+                'id': str(rel.id),
+                'from': str(rel.from_class.id),
+                'to': str(rel.to_class.id),
+                'from_name': rel.from_class.name,
+                'to_name': rel.to_class.name,
+                'type': rel.relationship_type,
+                'cardinality': {
+                    'from': rel.cardinality_from,
+                    'to': rel.cardinality_to
+                }
+            })
+        
+        return Response({
+            'diagram_id': str(diagrama.id),
+            'diagram_name': diagrama.name,
+            'classes_count': len(classes_data),
+            'relations_count': len(relations_data),
+            'classes': classes_data,
+            'relationships': relations_data
         })
