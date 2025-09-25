@@ -20,11 +20,11 @@ class VistaConjuntoDiagramas(viewsets.ModelViewSet):
 
     def create(self, request):
         """Crear un nuevo diagrama"""
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        diagrama = self.servicio.crear_diagrama(serializer.validated_data)
-        response_serializer = SerializadorDiagrama(diagrama)
-        return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+        serializador = self.get_serializer(data=request.data)
+        serializador.is_valid(raise_exception=True)
+        diagrama = self.servicio.crear_diagrama(serializador.validated_data)
+        serializador_respuesta = SerializadorDiagrama(diagrama)
+        return Response(serializador_respuesta.data, status=status.HTTP_201_CREATED)
 
     def retrieve(self, request, pk=None):
         """Obtener diagrama con detalles"""
@@ -34,16 +34,16 @@ class VistaConjuntoDiagramas(viewsets.ModelViewSet):
                 {'error': 'Diagrama no encontrado'},
                 status=status.HTTP_404_NOT_FOUND
             )
-        serializer = SerializadorDiagrama(diagrama)
-        return Response(serializer.data)
+        serializador = SerializadorDiagrama(diagrama)
+        return Response(serializador.data)
 
-    def update(self, request, pk=None):
+    def update(self, request, pk=None, partial=False):
         """Actualizar diagrama"""
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        diagrama = self.servicio.actualizar_diagrama(pk, serializer.validated_data)
-        response_serializer = SerializadorDiagrama(diagrama)
-        return Response(response_serializer.data)
+        serializador = self.get_serializer(data=request.data, partial=partial)
+        serializador.is_valid(raise_exception=True)
+        diagrama = self.servicio.actualizar_diagrama(pk, serializador.validated_data)
+        serializador_respuesta = SerializadorDiagrama(diagrama)
+        return Response(serializador_respuesta.data)
 
     def destroy(self, request, pk=None):
         """Eliminar diagrama"""
@@ -93,5 +93,5 @@ class VistaConjuntoDiagramas(viewsets.ModelViewSet):
 
         # Crear duplicado
         duplicado = self.servicio.crear_diagrama(datos_duplicado)
-        serializer = SerializadorDiagrama(duplicado)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        serializador = SerializadorDiagrama(duplicado)
+        return Response(serializador.data, status=status.HTTP_201_CREATED)
