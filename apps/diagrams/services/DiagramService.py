@@ -3,178 +3,152 @@ from django.db import transaction
 from ..models import Diagrama, EntidadClase, AtributoClase, Relacion
 from ..repositories import DiagramRepository, ClassEntityRepository, RelationshipRepository
 
-class DiagramService:
+class ServicioDiagrama:
     """Servicio para la lógica de negocio de diagramas"""
     def __init__(self):
-        self.diagram_repo = DiagramRepository()
-        self.class_repo = ClassEntityRepository()
-        self.relationship_repo = RelationshipRepository()
+        self.repositorio_diagrama = DiagramRepository()
+        self.repositorio_clase = ClassEntityRepository()
+        self.repositorio_relacion = RelationshipRepository()
 
-    def crear_diagrama(self, data: Dict[str, Any]) -> Diagrama:
+    def crear_diagrama(self, datos: Dict[str, Any]) -> Diagrama:
         """Crear un nuevo diagrama con clases y relaciones"""
         with transaction.atomic():
-            diagram = self.diagram_repo.create(data)
+            diagrama = self.repositorio_diagrama.create(datos)
 
-            # Process classes
-            classes_data = data.get('classes', [])
-            class_mapping = {}
+            # Procesar clases
+            datos_clases = datos.get('classes', [])
+            mapeo_clases = {}
 
-            for class_data in classes_data:
-                class_entity = self.class_repo.create_with_attributes(
-                    diagram=diagram,
-                    class_data=class_data
+            for datos_clase in datos_clases:
+                clase = self.repositorio_clase.create_with_attributes(
+                    diagram=diagrama,
+                    class_data=datos_clase
                 )
-                class_mapping[class_data['name']] = class_entity
+                mapeo_clases[datos_clase['name']] = clase
 
-            # Process relationships
-            relationships_data = data.get('relationships', [])
-            for rel_data in relationships_data:
-                self.relationship_repo.create_relationship(
-                    diagram=diagram,
-                    relationship_data=rel_data,
-                    class_mapping=class_mapping
+            # Procesar relaciones
+            datos_relaciones = datos.get('relationships', [])
+            for datos_rel in datos_relaciones:
+                self.repositorio_relacion.create_relationship(
+                    diagram=diagrama,
+                    relationship_data=datos_rel,
+                    class_mapping=mapeo_clases
                 )
 
-            return diagram
+            return diagrama
 
-    def actualizar_diagrama(self, diagram_id: str, data: Dict[str, Any]) -> Diagrama:
+    def actualizar_diagrama(self, diagrama_id: str, datos: Dict[str, Any]) -> Diagrama:
         """Actualizar diagrama con nueva información, incluyendo clases, atributos y relaciones"""
         with transaction.atomic():
-            diagram = self.diagram_repo.get_by_id(diagram_id)
+            diagrama = self.repositorio_diagrama.get_by_id(diagrama_id)
             # Actualizar info básica
-            for field in ['name', 'description', 'is_public']:
-                if field in data:
-                    setattr(diagram, field, data[field])
-            diagram.save()
+            for campo in ['name', 'description', 'is_public']:
+                if campo in datos:
+                    setattr(diagrama, campo, datos[campo])
+            diagrama.save()
 
             # Actualizar clases y atributos
-            if 'classes' in data:
-                self._actualizar_clases_y_atributos(diagram, data['classes'])
+            if 'classes' in datos:
+                self._actualizar_clases_y_atributos(diagrama, datos['classes'])
 
             # Actualizar relaciones
-            if 'relationships' in data:
-                self._actualizar_relaciones(diagram, data['relationships'])
+            if 'relationships' in datos:
+                self._actualizar_relaciones(diagrama, datos['relationships'])
 
-            return diagram
+            return diagrama
 
-    def _actualizar_clases_y_atributos(self, diagram: Diagrama, classes_data: List[Dict]):
+    def _actualizar_clases_y_atributos(self, diagrama: Diagrama, datos_clases: List[Dict]):
         """Actualizar clases y atributos de un diagrama"""
-        from ..models import EntidadClase, AtributoClase
-        # Mapear clases existentes por id y por nombre
-        existing_classes = {str(cls.id): cls for cls in diagram.classes.all()}
-        existing_classes_by_name = {cls.name: cls for cls in diagram.classes.all()}
-        received_ids = set()
-        new_class_names = set()
+        existentes_por_id = {str(cls.id): cls for cls in diagrama.classes.all()}
+        existentes_por_nombre = {cls.name: cls for cls in diagrama.classes.all()}
+        ids_recibidos = set()
+        nombres_nuevos = set()
 
-        for class_data in classes_data:
-            class_id = str(class_data.get('id', ''))
-            class_name = class_data.get('name')
-            new_class_names.add(class_name)
+        for datos_clase in datos_clases:
+            id_clase = str(datos_clase.get('id', ''))
+            nombre_clase = datos_clase.get('name')
+            nombres_nuevos.add(nombre_clase)
             # Si existe por id, actualizar
-            if class_id and class_id in existing_classes:
-                class_entity = existing_classes[class_id]
-                class_entity.name = class_name
-                pos = class_data.get('position', {'x': 0, 'y': 0})
-                class_entity.position_x = pos.get('x', 0)
-                class_entity.position_y = pos.get('y', 0)
-                class_entity.save()
-                received_ids.add(class_id)
+            if id_clase and id_clase in existentes_por_id:
+                clase = existentes_por_id[id_clase]
+                clase.name = nombre_clase
+                pos = datos_clase.get('position', {'x': 0, 'y': 0})
+                clase.position_x = pos.get('x', 0)
+                clase.position_y = pos.get('y', 0)
+                clase.save()
+                ids_recibidos.add(id_clase)
             # Si no existe, crear
-            elif class_name and class_name not in existing_classes_by_name:
-                pos = class_data.get('position', {'x': 0, 'y': 0})
-                class_entity = EntidadClase.objects.create(
-                    diagram=diagram,
-                    name=class_name,
+            elif nombre_clase and nombre_clase not in existentes_por_nombre:
+                pos = datos_clase.get('position', {'x': 0, 'y': 0})
+                clase = EntidadClase.objects.create(
+                    diagram=diagrama,
+                    name=nombre_clase,
                     position_x=pos.get('x', 0),
                     position_y=pos.get('y', 0)
                 )
-                received_ids.add(str(class_entity.id))
+                ids_recibidos.add(str(clase.id))
             else:
                 # Si existe por nombre pero no por id, actualizar
-                class_entity = existing_classes_by_name[class_name]
-                pos = class_data.get('position', {'x': 0, 'y': 0})
-                class_entity.position_x = pos.get('x', 0)
-                class_entity.position_y = pos.get('y', 0)
-                class_entity.save()
-                received_ids.add(str(class_entity.id))
+                clase = existentes_por_nombre[nombre_clase]
+                pos = datos_clase.get('position', {'x': 0, 'y': 0})
+                clase.position_x = pos.get('x', 0)
+                clase.position_y = pos.get('y', 0)
+                clase.save()
+                ids_recibidos.add(str(clase.id))
 
             # Actualizar atributos
-            if class_entity:
-                attrs = class_data.get('attributes', [])
+            if clase:
+                atributos = datos_clase.get('attributes', [])
+                existentes_atributos = {attr.name: attr for attr in clase.attributes.all()}
+                nuevos_nombres = set(atributos)
                 # Eliminar atributos que ya no están
-                existing_attrs = {attr.name: attr for attr in class_entity.attributes.all()}
-                new_attr_names = set(attrs)
-                for name, attr in existing_attrs.items():
-                    if name not in new_attr_names:
+                for nombre, attr in existentes_atributos.items():
+                    if nombre not in nuevos_nombres:
                         attr.delete()
                 # Crear nuevos atributos
-                for attr_name in new_attr_names:
-                    if attr_name not in existing_attrs:
+                for nombre_attr in nuevos_nombres:
+                    if nombre_attr not in existentes_atributos:
                         AtributoClase.objects.create(
-                            class_entity=class_entity,
-                            name=attr_name,
+                            class_entity=clase,
+                            name=nombre_attr,
                             data_type='String'
                         )
 
         # Eliminar clases que ya no están
-        for cls in diagram.classes.all():
-            if str(cls.id) not in received_ids and cls.name not in new_class_names:
+        for cls in diagrama.classes.all():
+            if str(cls.id) not in ids_recibidos and cls.name not in nombres_nuevos:
                 cls.delete()
 
-    def _actualizar_clases(self, diagram: Diagrama, classes_data: List[Dict]):
-        """Actualizar clases de un diagrama"""
-        existing_classes = {cls.name: cls for cls in diagram.classes.all()}
-        new_class_names = {cls_data['name'] for cls_data in classes_data}
-
-        # Remove deleted classes
-        for name, class_entity in existing_classes.items():
-            if name not in new_class_names:
-                class_entity.delete()
-
-        # Update or create classes
-        for class_data in classes_data:
-            if class_data['name'] in existing_classes:
-                self.class_repo.update_class(
-                    existing_classes[class_data['name']],
-                    class_data
-                )
-            else:
-                self.class_repo.create_with_attributes(diagram, class_data)
-
-    def _actualizar_relaciones(self, diagram: Diagrama, relationships_data: List[Dict]):
+    def _actualizar_relaciones(self, diagrama: Diagrama, datos_relaciones: List[Dict]):
         """Actualizar relaciones de un diagrama"""
-        from ..models import Relacion, EntidadClase
-        # Eliminar relaciones existentes
-        diagram.relationships.all().delete()
+        diagrama.relationships.all().delete()
+        mapeo_clases = {str(cls.id): cls for cls in diagrama.classes.all()}
 
-        # Mapear clases por id
-        class_mapping = {str(cls.id): cls for cls in diagram.classes.all()}
-
-        for rel_data in relationships_data:
-            from_id = str(rel_data.get('from'))
-            to_id = str(rel_data.get('to'))
-            rel_type = rel_data.get('type', 'association')
-            cardinality = rel_data.get('cardinality', {'from': '1', 'to': '1'})
-            from_class = class_mapping.get(from_id)
-            to_class = class_mapping.get(to_id)
-            if from_class and to_class:
+        for datos_rel in datos_relaciones:
+            desde_id = str(datos_rel.get('from'))
+            hasta_id = str(datos_rel.get('to'))
+            tipo = datos_rel.get('type', 'association')
+            cardinalidad = datos_rel.get('cardinality', {'from': '1', 'to': '1'})
+            desde_clase = mapeo_clases.get(desde_id)
+            hasta_clase = mapeo_clases.get(hasta_id)
+            if desde_clase and hasta_clase:
                 Relacion.objects.create(
-                    diagram=diagram,
-                    from_class=from_class,
-                    to_class=to_class,
-                    relationship_type=rel_type,
-                    cardinality_from=cardinality.get('from', '1'),
-                    cardinality_to=cardinality.get('to', '1')
+                    diagram=diagrama,
+                    from_class=desde_clase,
+                    to_class=hasta_clase,
+                    relationship_type=tipo,
+                    cardinality_from=cardinalidad.get('from', '1'),
+                    cardinality_to=cardinalidad.get('to', '1')
                 )
 
-    def obtener_diagrama_con_detalles(self, diagram_id: str) -> Optional[Diagrama]:
+    def obtener_diagrama_con_detalles(self, diagrama_id: str) -> Optional[Diagrama]:
         """Obtener diagrama con todos los datos relacionados"""
-        return self.diagram_repo.get_with_details(diagram_id)
+        return self.repositorio_diagrama.get_with_details(diagrama_id)
 
-    def listar_diagramas(self, user=None, is_public=None) -> List[Diagrama]:
+    def listar_diagramas(self, usuario=None, es_publico=None) -> List[Diagrama]:
         """Listar diagramas con filtrado opcional"""
-        return self.diagram_repo.list_diagrams(user=user, is_public=is_public)
+        return self.repositorio_diagrama.list_diagrams(user=usuario, is_public=es_publico)
 
-    def eliminar_diagrama(self, diagram_id: str) -> bool:
+    def eliminar_diagrama(self, diagrama_id: str) -> bool:
         """Eliminar un diagrama"""
-        return self.diagram_repo.delete(diagram_id)
+        return self.repositorio_diagrama.delete(diagrama_id)

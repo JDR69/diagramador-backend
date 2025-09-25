@@ -5,13 +5,13 @@ from django.shortcuts import get_object_or_404
 
 from ..models import Diagrama
 from ..serializers import SerializadorDiagrama, SerializadorCrearDiagrama
-from ..services import DiagramService
+from ..services.DiagramService import ServicioDiagrama
 
 class VistaConjuntoDiagramas(viewsets.ModelViewSet):
     """Conjunto de vistas para operaciones CRUD de diagramas"""
     queryset = Diagrama.objects.all()
     serializer_class = SerializadorDiagrama
-    service = DiagramService()
+    servicio = ServicioDiagrama()
 
     def get_serializer_class(self):
         if self.action == 'create':
@@ -22,16 +22,16 @@ class VistaConjuntoDiagramas(viewsets.ModelViewSet):
         """Crear un nuevo diagrama"""
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        diagrama = self.service.create_diagram(serializer.validated_data)
+        diagrama = self.servicio.crear_diagrama(serializer.validated_data)
         response_serializer = SerializadorDiagrama(diagrama)
         return Response(response_serializer.data, status=status.HTTP_201_CREATED)
 
     def retrieve(self, request, pk=None):
         """Obtener diagrama con detalles"""
-        diagrama = self.service.obtener_diagrama_con_detalles(pk)
+        diagrama = self.servicio.obtener_diagrama_con_detalles(pk)
         if not diagrama:
             return Response(
-                {'error': 'Diagram not found'},
+                {'error': 'Diagrama no encontrado'},
                 status=status.HTTP_404_NOT_FOUND
             )
         serializer = SerializadorDiagrama(diagrama)
@@ -39,17 +39,19 @@ class VistaConjuntoDiagramas(viewsets.ModelViewSet):
 
     def update(self, request, pk=None):
         """Actualizar diagrama"""
-        diagrama = self.service.update_diagram(pk, request.data)
-        serializer = SerializadorDiagrama(diagrama)
-        return Response(serializer.data)
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        diagrama = self.servicio.actualizar_diagrama(pk, serializer.validated_data)
+        response_serializer = SerializadorDiagrama(diagrama)
+        return Response(response_serializer.data)
 
     def destroy(self, request, pk=None):
         """Eliminar diagrama"""
-        success = self.service.delete_diagram(pk)
-        if success:
+        exito = self.servicio.eliminar_diagrama(pk)
+        if exito:
             return Response(status=status.HTTP_204_NO_CONTENT)
         return Response(
-            {'error': 'Diagram not found'},
+            {'error': 'Diagrama no encontrado'},
             status=status.HTTP_404_NOT_FOUND
         )
 
@@ -59,7 +61,7 @@ class VistaConjuntoDiagramas(viewsets.ModelViewSet):
         original = get_object_or_404(Diagrama, pk=pk)
 
         # Crear datos duplicados
-        duplicate_data = {
+        datos_duplicado = {
             'name': f"{original.name} (Copia)",
             'description': original.description,
             'is_public': False,
@@ -68,28 +70,28 @@ class VistaConjuntoDiagramas(viewsets.ModelViewSet):
         }
 
         # Copiar clases
-        for class_entity in original.classes.all():
-            class_data = {
-                'name': class_entity.name,
-                'position': {'x': class_entity.position_x, 'y': class_entity.position_y},
-                'attributes': [attr.name for attr in class_entity.attributes.all()]
+        for clase in original.classes.all():
+            datos_clase = {
+                'name': clase.name,
+                'position': {'x': clase.position_x, 'y': clase.position_y},
+                'attributes': [attr.name for attr in clase.attributes.all()]
             }
-            duplicate_data['classes'].append(class_data)
+            datos_duplicado['classes'].append(datos_clase)
 
         # Copiar relaciones
-        for relationship in original.relationships.all():
-            rel_data = {
-                'from': relationship.from_class.name,
-                'to': relationship.to_class.name,
-                'type': relationship.relationship_type,
+        for relacion in original.relationships.all():
+            datos_rel = {
+                'from': relacion.from_class.name,
+                'to': relacion.to_class.name,
+                'type': relacion.relationship_type,
                 'cardinality': {
-                    'from': relationship.cardinality_from,
-                    'to': relationship.cardinality_to
+                    'from': relacion.cardinality_from,
+                    'to': relacion.cardinality_to
                 }
             }
-            duplicate_data['relationships'].append(rel_data)
+            datos_duplicado['relationships'].append(datos_rel)
 
         # Crear duplicado
-        duplicate = self.service.create_diagram(duplicate_data)
-        serializer = SerializadorDiagrama(duplicate)
+        duplicado = self.servicio.crear_diagrama(datos_duplicado)
+        serializer = SerializadorDiagrama(duplicado)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
