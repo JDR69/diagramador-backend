@@ -5,13 +5,13 @@ from django.shortcuts import get_object_or_404
 
 from ..models import Diagrama
 from ..serializers import SerializadorDiagrama, SerializadorCrearDiagrama
-from ..services.DiagramService import ServicioDiagrama
+from ..services.DiagramService import DiagramService
 
 class VistaConjuntoDiagramas(viewsets.ModelViewSet):
     """Conjunto de vistas para operaciones CRUD de diagramas"""
     queryset = Diagrama.objects.all()
     serializer_class = SerializadorDiagrama
-    servicio = ServicioDiagrama()
+    servicio = DiagramService()
 
     def get_serializer_class(self):
         if self.action == 'create':
