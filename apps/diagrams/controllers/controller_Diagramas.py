@@ -146,20 +146,16 @@ class VistaConjuntoDiagramas(viewsets.ModelViewSet):
         return Response(data)
 
     @action(detail=True, methods=['get'])
-    def debug_relations(self, request, pk=None):
+    def debug_relationships(self, request, pk=None):
         """Ver solo las relaciones de un diagrama"""
         diagrama = self.get_object()
         relations = [
             {
-                'id': rel.id,
-                'from_class': {
-                    'id': rel.from_class.id, 
-                    'name': rel.from_class.name
-                },
-                'to_class': {
-                    'id': rel.to_class.id, 
-                    'name': rel.to_class.name
-                },
+                'id': str(rel.id),
+                'from_id': str(rel.from_class.id), 
+                'to_id': str(rel.to_class.id),
+                'from_name': rel.from_class.name,
+                'to_name': rel.to_class.name,
                 'type': rel.relationship_type,
                 'cardinality': {
                     'from': rel.cardinality_from,
@@ -168,4 +164,13 @@ class VistaConjuntoDiagramas(viewsets.ModelViewSet):
             }
             for rel in diagrama.relationships.all()
         ]
-        return Response({'relations_count': len(relations), 'relations': relations})
+        
+        classes = {str(cls.id): cls.name for cls in diagrama.classes.all()}
+        
+        return Response({
+            'diagram_id': str(diagrama.id),
+            'diagram_name': diagrama.name,
+            'relations_count': len(relations), 
+            'relations': relations,
+            'classes': classes
+        })

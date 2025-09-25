@@ -129,39 +129,35 @@ class DiagramService:
         """Actualizar relaciones de un diagrama"""
         # Eliminar relaciones existentes
         diagrama.relationships.all().delete()
-
-        # Obtener mapeo de clases tanto por ID como por nombre
+        
+        # Crear mapa de clases por ID y por nombre para poder buscar por cualquiera
         mapeo_clases_id = {str(cls.id): cls for cls in diagrama.classes.all()}
-        mapeo_clases_nombre = {cls.name: cls for cls in diagrama.classes.all()}
-
+        
         for rel_data in datos_relaciones:
-            # Intentar obtener clases por ID
+            # Los datos pueden venir con "from"/"to" como ID o como nombre
             desde_id = str(rel_data.get('from', ''))
             hasta_id = str(rel_data.get('to', ''))
             
-            # Si no tenemos ID, intentar por nombre
-            desde_nombre = rel_data.get('fromName', '')
-            hasta_nombre = rel_data.get('toName', '')
+            # Buscar clases por ID
+            desde_clase = mapeo_clases_id.get(desde_id)
+            hasta_clase = mapeo_clases_id.get(hasta_id)
             
-            desde_clase = None
-            hasta_clase = None
+            # Si no encontramos por ID, podrían ser referencias por nombre
+            if not (desde_clase and hasta_clase) and 'name' in rel_data:
+                # Intentar buscar por nombre
+                desde_nombre = rel_data.get('fromName', '')
+                hasta_nombre = rel_data.get('toName', '')
+                mapeo_nombre = {cls.name: cls for cls in diagrama.classes.all()}
+                
+                desde_clase = desde_clase or mapeo_nombre.get(desde_nombre)
+                hasta_clase = hasta_clase or mapeo_nombre.get(hasta_nombre)
             
-            # Intentar obtener la clase desde
-            if desde_id and desde_id in mapeo_clases_id:
-                desde_clase = mapeo_clases_id[desde_id]
-            elif desde_nombre and desde_nombre in mapeo_clases_nombre:
-                desde_clase = mapeo_clases_nombre[desde_nombre]
-            
-            # Intentar obtener la clase hasta
-            if hasta_id and hasta_id in mapeo_clases_id:
-                hasta_clase = mapeo_clases_id[hasta_id]
-            elif hasta_nombre and hasta_nombre in mapeo_clases_nombre:
-                hasta_clase = mapeo_clases_nombre[hasta_nombre]
-            
-            # Crear relación si tenemos ambas clases
             if desde_clase and hasta_clase:
                 tipo = rel_data.get('type', 'association')
                 cardinalidad = rel_data.get('cardinality', {'from': '1', 'to': '1'})
+                
+                # Debuggear
+                print(f"Creando relación: {desde_clase.name} -> {hasta_clase.name}, tipo: {tipo}")
                 
                 Relacion.objects.create(
                     diagram=diagrama,

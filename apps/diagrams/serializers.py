@@ -39,6 +39,8 @@ class SerializadorEntidadClase(serializers.ModelSerializer):
 
 class SerializadorRelacion(serializers.ModelSerializer):
     """Serializador para relaciones"""
+    from_class = serializers.PrimaryKeyRelatedField(queryset=EntidadClase.objects.all(), required=False)
+    to_class = serializers.PrimaryKeyRelatedField(queryset=EntidadClase.objects.all(), required=False)
     cardinality = serializers.SerializerMethodField()
     
     class Meta:
