@@ -174,7 +174,11 @@ class DiagramService:
 
     def obtener_diagrama_con_detalles(self, diagrama_id: str) -> Optional[Diagrama]:
         """Obtener diagrama con todos los datos relacionados"""
-        return self.repositorio_diagrama.get_with_details(diagrama_id)
+        diagrama = self.repositorio_diagrama.get_with_details(diagrama_id)
+        # Debugear las relaciones
+        if diagrama:
+            print(f"Relaciones: {list(diagrama.relationships.all())}")
+        return diagrama
 
     def listar_diagramas(self, usuario=None, es_publico=None) -> List[Diagrama]:
         """Listar diagramas con filtrado opcional"""

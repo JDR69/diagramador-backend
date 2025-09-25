@@ -59,7 +59,7 @@ class SerializadorRelacion(serializers.ModelSerializer):
 class SerializadorDiagrama(serializers.ModelSerializer):
     """Serializador para diagramas"""
     classes = SerializadorEntidadClase(many=True, read_only=True)
-    relationships = SerializadorRelacion(many=True, read_only=True)
+    relationships = SerializadorRelacion(many=True, read_only=False)
     
     class Meta:
         model = Diagrama
