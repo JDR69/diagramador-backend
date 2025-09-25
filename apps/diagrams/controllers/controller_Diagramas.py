@@ -13,12 +13,12 @@ class VistaConjuntoDiagramas(viewsets.ModelViewSet):
     serializer_class = SerializadorDiagrama
     service = DiagramService()
 
-    def obtener_clase_serializador(self):
+    def get_serializer_class(self):
         if self.action == 'create':
             return SerializadorCrearDiagrama
         return SerializadorDiagrama
 
-    def crear(self, request):
+    def create(self, request):
         """Crear un nuevo diagrama"""
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -26,7 +26,7 @@ class VistaConjuntoDiagramas(viewsets.ModelViewSet):
         response_serializer = SerializadorDiagrama(diagrama)
         return Response(response_serializer.data, status=status.HTTP_201_CREATED)
 
-    def obtener(self, request, pk=None):
+    def retrieve(self, request, pk=None):
         """Obtener diagrama con detalles"""
         diagrama = self.service.get_diagram_with_details(pk)
         if not diagrama:
@@ -37,13 +37,13 @@ class VistaConjuntoDiagramas(viewsets.ModelViewSet):
         serializer = SerializadorDiagrama(diagrama)
         return Response(serializer.data)
 
-    def actualizar(self, request, pk=None):
+    def update(self, request, pk=None):
         """Actualizar diagrama"""
         diagrama = self.service.update_diagram(pk, request.data)
         serializer = SerializadorDiagrama(diagrama)
         return Response(serializer.data)
 
-    def eliminar(self, request, pk=None):
+    def destroy(self, request, pk=None):
         """Eliminar diagrama"""
         success = self.service.delete_diagram(pk)
         if success:
