@@ -71,6 +71,15 @@ class SerializadorDiagrama(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
     
+    def update(self, request, pk=None, partial=False):
+        print("DATOS RECIBIDOS EN PATCH:", request.data)  # <-- Agrega esto
+        instance = self.get_object()
+        serializador = self.get_serializer(instance, data=request.data, partial=partial)
+        serializador.is_valid(raise_exception=True)
+        diagrama = serializador.save()
+        serializador_respuesta = self.get_serializer(diagrama)
+        return Response(serializador_respuesta.data)
+
     def update(self, instance, validated_data):
         # Para actualizaciones parciales, usamos directamente el servicio
         # y pasamos los datos raw del request que pueden incluir relaciones y clases
@@ -145,3 +154,23 @@ class SerializadorCrearDiagrama(serializers.ModelSerializer):
                 )
         
         return diagrama
+
+    def _actualizar_relaciones(self, diagrama: Diagrama, datos_relaciones: List[Dict]):
+        diagrama.relationships.all().delete()
+        mapeo_clases = {str(cls.id): cls for cls in diagrama.classes.all()}
+        for rel_data in datos_relaciones:
+            desde_id = str(rel_data.get('from'))
+            hasta_id = str(rel_data.get('to'))
+            desde_clase = mapeo_clases.get(desde_id)
+            hasta_clase = mapeo_clases.get(hasta_id)
+            if desde_clase and hasta_clase:
+                tipo = rel_data.get('type', 'association')
+                cardinalidad = rel_data.get('cardinality', {'from': '1', 'to': '1'})
+                Relacion.objects.create(
+                    diagram=diagrama,
+                    from_class=desde_clase,
+                    to_class=hasta_clase,
+                    relationship_type=tipo,
+                    cardinality_from=cardinalidad.get('from', '1'),
+                    cardinality_to=cardinalidad.get('to', '1')
+                )
