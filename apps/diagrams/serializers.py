@@ -3,6 +3,7 @@ Serializadores para modelos de diagrama - Capa de Presentación
 """
 from rest_framework import serializers
 from .models import Diagrama, EntidadClase, AtributoClase, Relacion
+from typing import List, Dict
 
 
 class SerializadorAtributoClase(serializers.ModelSerializer):
@@ -105,7 +106,8 @@ class SerializadorCrearDiagrama(serializers.ModelSerializer):
     
     class Meta:
         model = Diagrama
-        fields = ['id', 'name', 'description', 'classes', 'relationships', 'is_public']
+        fields = ['id', 'name', 'description', 'classes', 'relationships', 'is_public'
+        ]
         read_only_fields = ['id']
     
     def create(self, validated_data):
