@@ -3,7 +3,7 @@ from django.db import transaction
 from ..models import Diagrama, EntidadClase, AtributoClase, Relacion
 from ..repositories import DiagramRepository, ClassEntityRepository, RelationshipRepository
 
-class DiagramService:
+class ServicioDiagrama:
     """Servicio para la lógica de negocio de diagramas"""
     def __init__(self):
         self.repositorio_diagrama = DiagramRepository()

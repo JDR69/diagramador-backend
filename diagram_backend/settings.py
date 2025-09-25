@@ -80,7 +80,15 @@ import dj_database_url
 DATABASE_URL = config('DATABASE_URL', default=None)
 if DATABASE_URL:
     DATABASES = {
-        'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600)
+        'default': dj_database_url.parse(DATABASE_URL, conn_max_age=60)
+    }
+    # Agregar opciones para manejar mejor las conexiones
+    DATABASES['default']['OPTIONS'] = {
+        'connect_timeout': 10,
+        'keepalives': 1,
+        'keepalives_idle': 30,
+        'keepalives_interval': 10,
+        'keepalives_count': 5,
     }
 else:
     DATABASES = {
@@ -91,8 +99,14 @@ else:
             'PASSWORD': config('POSTGRES_PASSWORD', default='diagramsecret'),
             'HOST': config('POSTGRES_HOST', default='localhost'),
             'PORT': config('POSTGRES_PORT', default='5432'),
+            'CONN_MAX_AGE': 60,
             'OPTIONS': {
                 'sslmode': 'require',
+                'connect_timeout': 10,
+                'keepalives': 1,
+                'keepalives_idle': 30,
+                'keepalives_interval': 10,
+                'keepalives_count': 5,
             },
         }
     }
@@ -139,12 +153,26 @@ REST_FRAMEWORK = {
 }
 
 # Configuración de CORS
+CORS_ALLOW_ALL_ORIGINS = True  # Para desarrollo, permite todos los orígenes
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "https://localhost:3000",
+    "https://127.0.0.1:3000",
 ]
 
-CORS_ALLOW_ALL_ORIGINS = DEBUG
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
 
 # Configuración de Channels para producción (Redis)
 CHANNEL_LAYERS = {

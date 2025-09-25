@@ -6,7 +6,7 @@ import logging
 
 from ..models import Diagrama
 from ..serializers import SerializadorDiagrama, SerializadorCrearDiagrama
-from ..services.DiagramService import DiagramService
+from ..services.DiagramService import ServicioDiagrama
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +14,7 @@ class VistaConjuntoDiagramas(viewsets.ModelViewSet):
     """Conjunto de vistas para operaciones CRUD de diagramas"""
     queryset = Diagrama.objects.all()
     serializer_class = SerializadorDiagrama
-    servicio = DiagramService()
+    servicio = ServicioDiagrama()
 
     def get_serializer_class(self):
         if self.action == 'create':
