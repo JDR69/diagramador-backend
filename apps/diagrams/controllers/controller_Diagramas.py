@@ -39,18 +39,25 @@ class VistaConjuntoDiagramas(viewsets.ModelViewSet):
 
     def update(self, request, pk=None, partial=False):
         """Actualizar diagrama"""
-        # Obtener instancia actual
         instance = self.get_object()
+        print(f"DATOS RECIBIDOS: {request.data}")  # Para debug
         
-        # Usar la instancia al crear el serializador para actualizaciones parciales
+        # Usa instance para actualizar datos existentes
         serializador = self.get_serializer(instance, data=request.data, partial=partial)
         serializador.is_valid(raise_exception=True)
         
-        # Usar save() que internamente llama a update()
-        diagrama = serializador.save()
+        # Obtener datos validados y agregar datos faltantes si es PATCH
+        datos = dict(serializador.validated_data)
+        if partial and 'classes' not in datos and 'classes' in request.data:
+            datos['classes'] = request.data['classes']
+        if partial and 'relationships' not in datos and 'relationships' in request.data:
+            datos['relationships'] = request.data['relationships']
         
-        # Serializar respuesta
-        serializador_respuesta = SerializadorDiagrama(diagrama)
+        # Actualizar usando el servicio
+        diagrama = self.servicio.actualizar_diagrama(pk, datos)
+        
+        # Retornar respuesta
+        serializador_respuesta = self.get_serializer(diagrama)
         return Response(serializador_respuesta.data)
 
     def destroy(self, request, pk=None):
@@ -103,3 +110,37 @@ class VistaConjuntoDiagramas(viewsets.ModelViewSet):
         duplicado = self.servicio.crear_diagrama(datos_duplicado)
         serializador = SerializadorDiagrama(duplicado)
         return Response(serializador.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['get'])
+    def debug(self, request, pk=None):
+        """Endpoint de depuración para ver el estado actual del diagrama"""
+        diagrama = self.get_object()
+        data = {
+            'id': diagrama.id,
+            'name': diagrama.name,
+            'classes': [
+                {
+                    'id': cls.id,
+                    'name': cls.name,
+                    'position': {'x': cls.position_x, 'y': cls.position_y},
+                    'attributes': [attr.name for attr in cls.attributes.all()]
+                }
+                for cls in diagrama.classes.all()
+            ],
+            'relationships': [
+                {
+                    'id': rel.id,
+                    'from_id': rel.from_class.id,
+                    'to_id': rel.to_class.id,
+                    'from_name': rel.from_class.name,
+                    'to_name': rel.to_class.name,
+                    'type': rel.relationship_type,
+                    'cardinality': {
+                        'from': rel.cardinality_from,
+                        'to': rel.cardinality_to
+                    }
+                }
+                for rel in diagrama.relationships.all()
+            ]
+        }
+        return Response(data)

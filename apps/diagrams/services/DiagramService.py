@@ -127,17 +127,42 @@ class DiagramService:
 
     def _actualizar_relaciones(self, diagrama: Diagrama, datos_relaciones: List[Dict]):
         """Actualizar relaciones de un diagrama"""
+        # Eliminar relaciones existentes
         diagrama.relationships.all().delete()
-        mapeo_clases = {str(cls.id): cls for cls in diagrama.classes.all()}
 
-        for datos_rel in datos_relaciones:
-            desde_id = str(datos_rel.get('from'))
-            hasta_id = str(datos_rel.get('to'))
-            tipo = datos_rel.get('type', 'association')
-            cardinalidad = datos_rel.get('cardinality', {'from': '1', 'to': '1'})
-            desde_clase = mapeo_clases.get(desde_id)
-            hasta_clase = mapeo_clases.get(hasta_id)
+        # Obtener mapeo de clases tanto por ID como por nombre
+        mapeo_clases_id = {str(cls.id): cls for cls in diagrama.classes.all()}
+        mapeo_clases_nombre = {cls.name: cls for cls in diagrama.classes.all()}
+
+        for rel_data in datos_relaciones:
+            # Intentar obtener clases por ID
+            desde_id = str(rel_data.get('from', ''))
+            hasta_id = str(rel_data.get('to', ''))
+            
+            # Si no tenemos ID, intentar por nombre
+            desde_nombre = rel_data.get('fromName', '')
+            hasta_nombre = rel_data.get('toName', '')
+            
+            desde_clase = None
+            hasta_clase = None
+            
+            # Intentar obtener la clase desde
+            if desde_id and desde_id in mapeo_clases_id:
+                desde_clase = mapeo_clases_id[desde_id]
+            elif desde_nombre and desde_nombre in mapeo_clases_nombre:
+                desde_clase = mapeo_clases_nombre[desde_nombre]
+            
+            # Intentar obtener la clase hasta
+            if hasta_id and hasta_id in mapeo_clases_id:
+                hasta_clase = mapeo_clases_id[hasta_id]
+            elif hasta_nombre and hasta_nombre in mapeo_clases_nombre:
+                hasta_clase = mapeo_clases_nombre[hasta_nombre]
+            
+            # Crear relación si tenemos ambas clases
             if desde_clase and hasta_clase:
+                tipo = rel_data.get('type', 'association')
+                cardinalidad = rel_data.get('cardinality', {'from': '1', 'to': '1'})
+                
                 Relacion.objects.create(
                     diagram=diagrama,
                     from_class=desde_clase,
