@@ -67,32 +67,38 @@ class DiagramService:
         for datos_clase in datos_clases:
             id_clase = str(datos_clase.get('id', ''))
             nombre_clase = datos_clase.get('name')
+            # Asegurarse de que la posición se procesa correctamente
+            pos = datos_clase.get('position', {})
+            if isinstance(pos, dict) and 'x' in pos and 'y' in pos:
+                pos_x = pos.get('x', 0)
+                pos_y = pos.get('y', 0)
+            else:
+                pos_x = 0
+                pos_y = 0
+                
             nombres_nuevos.add(nombre_clase)
             # Si existe por id, actualizar
             if id_clase and id_clase in existentes_por_id:
                 clase = existentes_por_id[id_clase]
                 clase.name = nombre_clase
-                pos = datos_clase.get('position', {'x': 0, 'y': 0})
-                clase.position_x = pos.get('x', 0)
-                clase.position_y = pos.get('y', 0)
+                clase.position_x = pos_x
+                clase.position_y = pos_y
                 clase.save()
                 ids_recibidos.add(id_clase)
             # Si no existe, crear
             elif nombre_clase and nombre_clase not in existentes_por_nombre:
-                pos = datos_clase.get('position', {'x': 0, 'y': 0})
                 clase = EntidadClase.objects.create(
                     diagram=diagrama,
                     name=nombre_clase,
-                    position_x=pos.get('x', 0),
-                    position_y=pos.get('y', 0)
+                    position_x=pos_x,
+                    position_y=pos_y
                 )
                 ids_recibidos.add(str(clase.id))
             else:
                 # Si existe por nombre pero no por id, actualizar
                 clase = existentes_por_nombre[nombre_clase]
-                pos = datos_clase.get('position', {'x': 0, 'y': 0})
-                clase.position_x = pos.get('x', 0)
-                clase.position_y = pos.get('y', 0)
+                clase.position_x = pos_x
+                clase.position_y = pos_y
                 clase.save()
                 ids_recibidos.add(str(clase.id))
 

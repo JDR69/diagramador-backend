@@ -39,9 +39,17 @@ class VistaConjuntoDiagramas(viewsets.ModelViewSet):
 
     def update(self, request, pk=None, partial=False):
         """Actualizar diagrama"""
-        serializador = self.get_serializer(data=request.data, partial=partial)
+        # Obtener instancia actual
+        instance = self.get_object()
+        
+        # Usar la instancia al crear el serializador para actualizaciones parciales
+        serializador = self.get_serializer(instance, data=request.data, partial=partial)
         serializador.is_valid(raise_exception=True)
-        diagrama = self.servicio.actualizar_diagrama(pk, serializador.validated_data)
+        
+        # Usar save() que internamente llama a update()
+        diagrama = serializador.save()
+        
+        # Serializar respuesta
         serializador_respuesta = SerializadorDiagrama(diagrama)
         return Response(serializador_respuesta.data)
 
