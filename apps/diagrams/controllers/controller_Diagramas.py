@@ -39,26 +39,20 @@ class VistaConjuntoDiagramas(viewsets.ModelViewSet):
 
     def update(self, request, pk=None, partial=False):
         """Actualizar diagrama"""
-        instance = self.get_object()
-        print(f"DATOS RECIBIDOS: {request.data}")  # Para debug
-        
-        # Usa instance para actualizar datos existentes
-        serializador = self.get_serializer(instance, data=request.data, partial=partial)
-        serializador.is_valid(raise_exception=True)
-        
-        # Obtener datos validados y agregar datos faltantes si es PATCH
-        datos = dict(serializador.validated_data)
-        if partial and 'classes' not in datos and 'classes' in request.data:
-            datos['classes'] = request.data['classes']
-        if partial and 'relationships' not in datos and 'relationships' in request.data:
-            datos['relationships'] = request.data['relationships']
-        
-        # Actualizar usando el servicio
-        diagrama = self.servicio.actualizar_diagrama(pk, datos)
-        
-        # Retornar respuesta
-        serializador_respuesta = self.get_serializer(diagrama)
-        return Response(serializador_respuesta.data)
+        try:
+            instance = self.get_object()
+            serializador = self.get_serializer(instance, data=request.data, partial=partial)
+            serializador.is_valid(raise_exception=True)
+            diagrama = serializador.save()
+            serializador_respuesta = self.get_serializer(diagrama)
+            return Response(serializador_respuesta.data)
+        except Exception as e:
+            from django.db import connection
+            connection.close()
+            return Response(
+                {'error': f'Error procesando la solicitud: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     def destroy(self, request, pk=None):
         """Eliminar diagrama"""
