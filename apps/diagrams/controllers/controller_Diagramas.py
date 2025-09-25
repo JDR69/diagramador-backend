@@ -28,7 +28,7 @@ class VistaConjuntoDiagramas(viewsets.ModelViewSet):
 
     def retrieve(self, request, pk=None):
         """Obtener diagrama con detalles"""
-        diagrama = self.service.get_diagram_with_details(pk)
+        diagrama = self.service.obtener_diagrama_con_detalles(pk)
         if not diagrama:
             return Response(
                 {'error': 'Diagram not found'},
