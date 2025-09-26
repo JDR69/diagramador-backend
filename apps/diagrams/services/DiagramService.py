@@ -1,7 +1,21 @@
 from typing import List, Dict, Any, Optional
-from django.db import transaction
+import logging
+from django.db import transaction, connections
 from ..models import Diagrama, EntidadClase, AtributoClase, Relacion
 from ..repositories import DiagramRepository, ClassEntityRepository, RelationshipRepository
+
+logger = logging.getLogger(__name__)
+
+def cerrar_conexiones():
+    """Utilidad para cerrar todas las conexiones de base de datos."""
+    try:
+        for alias in connections:
+            connection = connections[alias]
+            if connection.connection is not None:
+                connection.close()
+                logger.debug(f"Conexión '{alias}' cerrada")
+    except Exception as e:
+        logger.error(f"Error cerrando conexiones: {e}")
 
 class ServicioDiagrama:
     """Servicio para la lógica de negocio de diagramas"""
@@ -12,50 +26,73 @@ class ServicioDiagrama:
 
     def crear_diagrama(self, datos: Dict[str, Any]) -> Diagrama:
         """Crear un nuevo diagrama con clases y relaciones"""
-        with transaction.atomic():
-            diagrama = self.repositorio_diagrama.create(datos)
+        try:
+            with transaction.atomic():
+                diagrama = self.repositorio_diagrama.create(datos)
 
-            # Procesar clases
-            datos_clases = datos.get('classes', [])
-            mapeo_clases = {}
+                # Procesar clases
+                datos_clases = datos.get('classes', [])
+                mapeo_clases = {}
 
-            for datos_clase in datos_clases:
-                clase = self.repositorio_clase.create_with_attributes(
-                    diagram=diagrama,
-                    class_data=datos_clase
-                )
-                mapeo_clases[datos_clase['name']] = clase
+                for datos_clase in datos_clases:
+                    clase = self.repositorio_clase.create_with_attributes(
+                        diagram=diagrama,
+                        class_data=datos_clase
+                    )
+                    mapeo_clases[datos_clase['name']] = clase
 
-            # Procesar relaciones
-            datos_relaciones = datos.get('relationships', [])
-            for datos_rel in datos_relaciones:
-                self.repositorio_relacion.create_relationship(
-                    diagram=diagrama,
-                    relationship_data=datos_rel,
-                    class_mapping=mapeo_clases
-                )
+                # Procesar relaciones
+                datos_relaciones = datos.get('relationships', [])
+                for datos_rel in datos_relaciones:
+                    self.repositorio_relacion.create_relationship(
+                        diagram=diagrama,
+                        relationship_data=datos_rel,
+                        class_mapping=mapeo_clases
+                    )
 
-            return diagrama
+                return diagrama
+        finally:
+            cerrar_conexiones()
 
     def actualizar_diagrama(self, diagrama_id: str, datos: Dict[str, Any]) -> Diagrama:
         """Actualizar diagrama con nueva información, incluyendo clases, atributos y relaciones"""
-        with transaction.atomic():
-            diagrama = self.repositorio_diagrama.get_by_id(diagrama_id)
-            # Actualizar info básica
-            for campo in ['name', 'description', 'is_public']:
-                if campo in datos:
-                    setattr(diagrama, campo, datos[campo])
-            diagrama.save()
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        try:
+            with transaction.atomic():
+                diagrama = self.repositorio_diagrama.get_by_id(diagrama_id)
+                if not diagrama:
+                    raise ValueError(f"Diagrama con ID {diagrama_id} no encontrado")
+                
+                logger.info(f"Actualizando diagrama {diagrama_id} con datos: {datos}")
+                
+                # Actualizar info básica solo si está presente
+                for campo in ['name', 'description', 'is_public']:
+                    if campo in datos:
+                        setattr(diagrama, campo, datos[campo])
+                        logger.info(f"Campo {campo} actualizado a: {datos[campo]}")
+                
+                diagrama.save()
 
-            # Actualizar clases y atributos
-            if 'classes' in datos:
-                self._actualizar_clases_y_atributos(diagrama, datos['classes'])
+                # Actualizar clases y atributos solo si están en los datos
+                if 'classes' in datos and datos['classes']:
+                    logger.info(f"Actualizando {len(datos['classes'])} clases")
+                    self._actualizar_clases_y_atributos(diagrama, datos['classes'])
 
-            # Actualizar relaciones
-            if 'relationships' in datos:
-                self._actualizar_relaciones(diagrama, datos['relationships'])
+                # Actualizar relaciones solo si están en los datos
+                if 'relationships' in datos and datos['relationships']:
+                    logger.info(f"Actualizando {len(datos['relationships'])} relaciones")
+                    self._actualizar_relaciones(diagrama, datos['relationships'])
 
-            return diagrama
+                logger.info(f"Diagrama {diagrama_id} actualizado exitosamente")
+                return diagrama
+                
+        except Exception as e:
+            logger.error(f"Error actualizando diagrama {diagrama_id}: {str(e)}", exc_info=True)
+            raise
+        finally:
+            cerrar_conexiones()
 
     def _actualizar_clases_y_atributos(self, diagrama: Diagrama, datos_clases: List[Dict]):
         """Actualizar clases y atributos de un diagrama"""
@@ -131,46 +168,62 @@ class ServicioDiagrama:
         logger = logging.getLogger(__name__)
         
         try:
-            # Eliminar relaciones existentes
-            logger.info(f"Eliminando {diagrama.relationships.count()} relaciones existentes")
-            diagrama.relationships.all().delete()
+            # Solo eliminar relaciones si hay nuevas relaciones para crear
+            if datos_relaciones:
+                logger.info(f"Eliminando {diagrama.relationships.count()} relaciones existentes")
+                diagrama.relationships.all().delete()
 
-            # Crear mapeo de clases
-            mapeo_clases_id = {str(cls.id): cls for cls in diagrama.classes.all()}
-            logger.info(f"Mapeo de clases: {list(mapeo_clases_id.keys())}")
+                # Crear mapeo de clases
+                mapeo_clases_id = {str(cls.id): cls for cls in diagrama.classes.all()}
+                logger.info(f"Clases disponibles: {list(mapeo_clases_id.keys())}")
 
-            for i, rel_data in enumerate(datos_relaciones):
-                logger.info(f"Procesando relación {i}: {rel_data}")
+                relaciones_creadas = 0
+                for i, rel_data in enumerate(datos_relaciones):
+                    try:
+                        logger.info(f"Procesando relación {i}: {rel_data}")
+                        
+                        # Obtener IDs de forma más robusta
+                        desde_id = str(rel_data.get('from', '')).strip()
+                        hasta_id = str(rel_data.get('to', '')).strip()
+                        
+                        if not desde_id or not hasta_id:
+                            logger.warning(f"IDs inválidos en relación {i}: from={desde_id}, to={hasta_id}")
+                            continue
+                        
+                        # Buscar clases
+                        desde_clase = mapeo_clases_id.get(desde_id)
+                        hasta_clase = mapeo_clases_id.get(hasta_id)
+                        
+                        if not desde_clase:
+                            logger.warning(f"Clase 'from' no encontrada: {desde_id}")
+                            continue
+                            
+                        if not hasta_clase:
+                            logger.warning(f"Clase 'to' no encontrada: {hasta_id}")
+                            continue
+                        
+                        # Crear relación
+                        tipo = rel_data.get('type', 'association')
+                        cardinalidad = rel_data.get('cardinality', {'from': '1', 'to': '1'})
+                        
+                        relacion = Relacion.objects.create(
+                            diagram=diagrama,
+                            from_class=desde_clase,
+                            to_class=hasta_clase,
+                            relationship_type=tipo,
+                            cardinality_from=cardinalidad.get('from', '1'),
+                            cardinality_to=cardinalidad.get('to', '1')
+                        )
+                        relaciones_creadas += 1
+                        logger.info(f"Relación creada: {relacion.id} ({desde_clase.name} -> {hasta_clase.name})")
+                        
+                    except Exception as e:
+                        logger.error(f"Error procesando relación {i}: {str(e)}")
+                        continue
                 
-                # Obtener IDs
-                desde_id = str(rel_data.get('from', ''))
-                hasta_id = str(rel_data.get('to', ''))
-                
-                # Buscar clases
-                desde_clase = mapeo_clases_id.get(desde_id)
-                hasta_clase = mapeo_clases_id.get(hasta_id)
-                
-                if not desde_clase:
-                    logger.warning(f"Clase 'from' no encontrada: {desde_id}")
-                    continue
-                    
-                if not hasta_clase:
-                    logger.warning(f"Clase 'to' no encontrada: {hasta_id}")
-                    continue
-                
-                # Crear relación
-                tipo = rel_data.get('type', 'association')
-                cardinalidad = rel_data.get('cardinality', {'from': '1', 'to': '1'})
-                
-                relacion = Relacion.objects.create(
-                    diagram=diagrama,
-                    from_class=desde_clase,
-                    to_class=hasta_clase,
-                    relationship_type=tipo,
-                    cardinality_from=cardinalidad.get('from', '1'),
-                    cardinality_to=cardinalidad.get('to', '1')
-                )
-                logger.info(f"Relación creada: {relacion.id}")
+                logger.info(f"Se crearon {relaciones_creadas} relaciones de {len(datos_relaciones)} intentadas")
+            else:
+                logger.info("No hay relaciones para actualizar")
                 
         except Exception as e:
             logger.error(f"Error actualizando relaciones: {str(e)}", exc_info=True)

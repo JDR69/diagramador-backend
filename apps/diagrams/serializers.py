@@ -71,28 +71,6 @@ class SerializadorDiagrama(serializers.ModelSerializer):
             'is_public', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
-    
-    def update(self, instance, validated_data):
-        try:
-            # Usar el servicio para actualizar
-            from .services.DiagramService import ServicioDiagrama
-            servicio = ServicioDiagrama()
-            
-            # Combinar datos validados con datos del request original
-            data = dict(validated_data)
-            if self.partial and hasattr(self, 'initial_data'):
-                if 'classes' in self.initial_data:
-                    data['classes'] = self.initial_data['classes']
-                if 'relationships' in self.initial_data:
-                    data['relationships'] = self.initial_data['relationships']
-            
-            updated = servicio.actualizar_diagrama(str(instance.id), data)
-            return updated
-        except Exception as e:
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.error(f"Error en serializador update: {str(e)}", exc_info=True)
-            raise
 
 
 class SerializadorCrearDiagrama(serializers.ModelSerializer):

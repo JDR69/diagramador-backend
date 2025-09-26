@@ -50,6 +50,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'apps.diagrams.middleware.ConnectionCleanupMiddleware',  # Cleanup de conexiones
 ]
 
 ROOT_URLCONF = 'diagram_backend.urls'
@@ -80,16 +81,18 @@ import dj_database_url
 DATABASE_URL = config('DATABASE_URL', default=None)
 if DATABASE_URL:
     DATABASES = {
-        'default': dj_database_url.parse(DATABASE_URL, conn_max_age=60)
+        'default': dj_database_url.parse(DATABASE_URL, conn_max_age=0)  # Desactivar pooling persistente
     }
-    # Agregar opciones para manejar mejor las conexiones
-    DATABASES['default']['OPTIONS'] = {
-        'connect_timeout': 10,
-        'keepalives': 1,
-        'keepalives_idle': 30,
-        'keepalives_interval': 10,
-        'keepalives_count': 5,
-    }
+    # Configuración optimizada para Render con límite de conexiones bajo
+    DATABASES['default'].update({
+        'CONN_MAX_AGE': 0,  # Cerrar conexiones inmediatamente
+        'CONN_HEALTH_CHECKS': True,
+        'OPTIONS': {
+            'connect_timeout': 5,  # Timeout más corto
+            'keepalives': 0,  # Desactivar keepalives
+            'sslmode': 'require' if 'postgresql' in DATABASE_URL else 'disable',
+        }
+    })
 else:
     DATABASES = {
         'default': {
@@ -99,17 +102,22 @@ else:
             'PASSWORD': config('POSTGRES_PASSWORD', default='diagramsecret'),
             'HOST': config('POSTGRES_HOST', default='localhost'),
             'PORT': config('POSTGRES_PORT', default='5432'),
-            'CONN_MAX_AGE': 60,
+            'CONN_MAX_AGE': 0,  # No pooling
+            'CONN_HEALTH_CHECKS': True,
             'OPTIONS': {
                 'sslmode': 'require',
-                'connect_timeout': 10,
-                'keepalives': 1,
-                'keepalives_idle': 30,
-                'keepalives_interval': 10,
-                'keepalives_count': 5,
+                'connect_timeout': 5,
+                'keepalives': 0,
             },
         }
     }
+
+# Configuración adicional para gestión de conexiones
+DATABASES['default'].setdefault('TEST', {})
+DATABASES['default']['TEST']['SERIALIZE'] = False
+
+# Cerrar conexiones automáticamente después de cada request
+DATABASE_CONN_MAX_AGE = 0
 
 # Validación de contraseñas
 AUTH_PASSWORD_VALIDATORS = [
@@ -190,3 +198,47 @@ CELERY_RESULT_BACKEND = config('REDIS_URL', default='redis://localhost:6379/0')
 
 # Configuración de integración de IA
 GROQ_API_KEY = config('GROQ_API_KEY', default='')
+
+# Configuración de logging
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'DEBUG' if DEBUG else 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        'django.db.backends': {
+            'level': 'WARNING',  # Solo errores críticos de DB
+            'handlers': ['console'],
+            'propagate': False,
+        },
+        'apps.diagrams': {
+            'level': 'DEBUG' if DEBUG else 'INFO',
+            'handlers': ['console'],
+            'propagate': False,
+        },
+        'django': {
+            'level': 'INFO',
+            'handlers': ['console'],
+            'propagate': False,
+        },
+    },
+    'root': {
+        'level': 'WARNING',
+        'handlers': ['console'],
+    },
+}

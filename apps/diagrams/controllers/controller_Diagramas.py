@@ -2,13 +2,28 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
+from django.db import connections
+from django.utils import timezone
+from django.conf import settings
 import logging
+import os
 
 from ..models import Diagrama
 from ..serializers import SerializadorDiagrama, SerializadorCrearDiagrama
 from ..services.DiagramService import ServicioDiagrama
 
 logger = logging.getLogger(__name__)
+
+def cerrar_conexiones():
+    """Utilidad para cerrar todas las conexiones de base de datos."""
+    try:
+        for alias in connections:
+            connection = connections[alias]
+            if connection.connection is not None:
+                connection.close()
+                logger.debug(f"Conexión '{alias}' cerrada")
+    except Exception as e:
+        logger.error(f"Error cerrando conexiones: {e}")
 
 class VistaConjuntoDiagramas(viewsets.ModelViewSet):
     """Conjunto de vistas para operaciones CRUD de diagramas"""
@@ -23,49 +38,151 @@ class VistaConjuntoDiagramas(viewsets.ModelViewSet):
 
     def create(self, request):
         """Crear un nuevo diagrama"""
-        serializador = self.get_serializer(data=request.data)
-        serializador.is_valid(raise_exception=True)
-        diagrama = self.servicio.crear_diagrama(serializador.validated_data)
-        serializador_respuesta = SerializadorDiagrama(diagrama)
-        return Response(serializador_respuesta.data, status=status.HTTP_201_CREATED)
+        try:
+            from django.db import connection
+            logger.info(f"Creando diagrama: {request.data}")
+            
+            serializador = self.get_serializer(data=request.data)
+            serializador.is_valid(raise_exception=True)
+            
+            diagrama = self.servicio.crear_diagrama(serializador.validated_data)
+            serializador_respuesta = SerializadorDiagrama(diagrama)
+            
+            connection.close()
+            return Response(serializador_respuesta.data, status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            from django.db import connection
+            connection.close()
+            logger.error(f"Error en create: {str(e)}", exc_info=True)
+            return Response(
+                {'error': 'Error interno del servidor'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     def retrieve(self, request, pk=None):
         """Obtener diagrama con detalles"""
-        diagrama = self.servicio.obtener_diagrama_con_detalles(pk)
-        if not diagrama:
+        try:
+            from django.db import connection
+            logger.info(f"Obteniendo diagrama: {pk}")
+            
+            diagrama = self.servicio.obtener_diagrama_con_detalles(pk)
+            if not diagrama:
+                connection.close()
+                return Response(
+                    {'error': 'Diagrama no encontrado'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            serializador = SerializadorDiagrama(diagrama)
+            connection.close()
+            return Response(serializador.data)
+            
+        except Exception as e:
+            from django.db import connection
+            connection.close()
+            logger.error(f"Error en retrieve: {str(e)}", exc_info=True)
             return Response(
-                {'error': 'Diagrama no encontrado'},
-                status=status.HTTP_404_NOT_FOUND
+                {'error': 'Error interno del servidor'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-        serializador = SerializadorDiagrama(diagrama)
-        return Response(serializador.data)
 
     def update(self, request, pk=None, partial=False):
         """Actualizar diagrama"""
         try:
+            from django.db import connection
             logger.info(f"DATOS RECIBIDOS EN PATCH: {request.data}")
-            instance = self.get_object()
-            serializador = self.get_serializer(instance, data=request.data, partial=partial)
-            serializador.is_valid(raise_exception=True)
-            diagrama = serializador.save()
-            serializador_respuesta = self.get_serializer(diagrama)
-            return Response(serializador_respuesta.data)
+            
+            # Obtener instancia de forma más segura
+            try:
+                instance = self.get_object()
+            except Exception as e:
+                logger.error(f"Error obteniendo objeto: {str(e)}")
+                connection.close()
+                return Response(
+                    {'error': 'Diagrama no encontrado'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            # Actualización directa usando el servicio, evitando el serializer
+            try:
+                diagrama = self.servicio.actualizar_diagrama(pk, request.data)
+                serializador_respuesta = self.get_serializer(diagrama)
+                cerrar_conexiones()
+                return Response(serializador_respuesta.data)
+            except Exception as e:
+                logger.error(f"Error en servicio: {str(e)}", exc_info=True)
+                cerrar_conexiones()
+                return Response(
+                    {'error': f'Error interno: {str(e)}'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+                
         except Exception as e:
-            logger.error(f"Error en update: {str(e)}", exc_info=True)
+            cerrar_conexiones()
+            logger.error(f"Error general en update: {str(e)}", exc_info=True)
             return Response(
-                {'error': f'Error procesando la solicitud: {str(e)}'},
+                {'error': 'Error interno del servidor'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
     def destroy(self, request, pk=None):
         """Eliminar diagrama"""
-        exito = self.servicio.eliminar_diagrama(pk)
-        if exito:
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        return Response(
-            {'error': 'Diagrama no encontrado'},
-            status=status.HTTP_404_NOT_FOUND
-        )
+        try:
+            exito = self.servicio.eliminar_diagrama(pk)
+            if exito:
+                return Response(status=status.HTTP_204_NO_CONTENT)
+            return Response(
+                {'error': 'Diagrama no encontrado'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        finally:
+            cerrar_conexiones()
+
+    @action(detail=False, methods=['get'])
+    def health_check(self, request):
+        """Verificar estado del servidor y base de datos"""
+        try:
+            from django.db import connections
+            
+            # Verificar conexión a base de datos
+            db_status = {}
+            for alias in connections:
+                try:
+                    connection = connections[alias]
+                    with connection.cursor() as cursor:
+                        cursor.execute("SELECT 1")
+                        cursor.fetchone()
+                        db_status[alias] = "OK"
+                except Exception as e:
+                    db_status[alias] = f"ERROR: {str(e)}"
+                finally:
+                    if connection.connection is not None:
+                        connection.close()
+            
+            # Información básica del sistema
+            info = {
+                'status': 'OK',
+                'timestamp': timezone.now().isoformat(),
+                'database': db_status,
+                'django': {
+                    'debug': settings.DEBUG,
+                    'database_url_configured': bool(os.getenv('DATABASE_URL')),
+                    'connections_available': len([s for s in db_status.values() if s == "OK"])
+                }
+            }
+            
+            return Response(info)
+            
+        except Exception as e:
+            logger.error(f"Error en health check: {str(e)}", exc_info=True)
+            return Response({
+                'status': 'ERROR',
+                'error': str(e),
+                'timestamp': timezone.now().isoformat()
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        finally:
+            cerrar_conexiones()
 
     @action(detail=True, methods=['post'])
     def duplicar(self, request, pk=None):
@@ -107,6 +224,33 @@ class VistaConjuntoDiagramas(viewsets.ModelViewSet):
         duplicado = self.servicio.crear_diagrama(datos_duplicado)
         serializador = SerializadorDiagrama(duplicado)
         return Response(serializador.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=['get'])
+    def health_check(self, request):
+        """Verificar el estado del servidor"""
+        try:
+            from django.db import connection
+            from django.utils import timezone
+            # Hacer una consulta simple para verificar la conexión a la BD
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT 1")
+                result = cursor.fetchone()
+            
+            connection.close()
+            return Response({
+                'status': 'healthy',
+                'database': 'connected',
+                'timestamp': timezone.now().isoformat()
+            })
+        except Exception as e:
+            from django.db import connection
+            from django.utils import timezone
+            connection.close()
+            return Response({
+                'status': 'unhealthy',
+                'error': str(e),
+                'timestamp': timezone.now().isoformat()
+            }, status=500)
 
     @action(detail=True, methods=['get'])
     def debug(self, request, pk=None):
