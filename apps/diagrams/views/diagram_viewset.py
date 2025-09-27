@@ -1,3 +1,6 @@
+"""
+ViewSet para diagramas
+"""
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -14,6 +17,7 @@ from ..services.DiagramService import ServicioDiagrama
 
 logger = logging.getLogger(__name__)
 
+
 def cerrar_conexiones():
     """Utilidad para cerrar todas las conexiones de base de datos."""
     try:
@@ -25,7 +29,8 @@ def cerrar_conexiones():
     except Exception as e:
         logger.error(f"Error cerrando conexiones: {e}")
 
-class VistaConjuntoDiagramas(viewsets.ModelViewSet):
+
+class DiagramViewSet(viewsets.ModelViewSet):
     """Conjunto de vistas para operaciones CRUD de diagramas"""
     queryset = Diagrama.objects.all()
     serializer_class = SerializadorDiagrama
@@ -225,33 +230,6 @@ class VistaConjuntoDiagramas(viewsets.ModelViewSet):
         serializador = SerializadorDiagrama(duplicado)
         return Response(serializador.data, status=status.HTTP_201_CREATED)
 
-    @action(detail=False, methods=['get'])
-    def health_check(self, request):
-        """Verificar el estado del servidor"""
-        try:
-            from django.db import connection
-            from django.utils import timezone
-            # Hacer una consulta simple para verificar la conexión a la BD
-            with connection.cursor() as cursor:
-                cursor.execute("SELECT 1")
-                result = cursor.fetchone()
-            
-            connection.close()
-            return Response({
-                'status': 'healthy',
-                'database': 'connected',
-                'timestamp': timezone.now().isoformat()
-            })
-        except Exception as e:
-            from django.db import connection
-            from django.utils import timezone
-            connection.close()
-            return Response({
-                'status': 'unhealthy',
-                'error': str(e),
-                'timestamp': timezone.now().isoformat()
-            }, status=500)
-
     @action(detail=True, methods=['get'])
     def debug(self, request, pk=None):
         """Endpoint de depuración para ver el estado actual del diagrama"""
@@ -353,3 +331,7 @@ class VistaConjuntoDiagramas(viewsets.ModelViewSet):
             'classes': classes_data,
             'relationships': relations_data
         })
+
+
+# Legacy alias
+VistaConjuntoDiagramas = DiagramViewSet

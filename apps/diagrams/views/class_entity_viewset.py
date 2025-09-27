@@ -1,3 +1,6 @@
+"""
+ViewSet para entidades de clase
+"""
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -6,7 +9,8 @@ from ..models import EntidadClase
 from ..serializers import SerializadorEntidadClase, SerializadorAtributoClase
 from ..services import ClassEntityService
 
-class VistaConjuntoEntidadesClase(viewsets.ModelViewSet):
+
+class ClassEntityViewSet(viewsets.ModelViewSet):
     """Conjunto de vistas para operaciones CRUD de entidades de clase"""
     queryset = EntidadClase.objects.all()
     serializer_class = SerializadorEntidadClase
@@ -36,3 +40,7 @@ class VistaConjuntoEntidadesClase(viewsets.ModelViewSet):
         class_entity = self.service.update_class_position(pk, request.data['position'])
         serializer = SerializadorEntidadClase(class_entity)
         return Response(serializer.data)
+
+
+# Legacy alias
+VistaConjuntoEntidadesClase = ClassEntityViewSet
