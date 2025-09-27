@@ -44,9 +44,9 @@ class ServicioDiagrama:
                 # Procesar relaciones
                 datos_relaciones = datos.get('relationships', [])
                 for datos_rel in datos_relaciones:
-                    self.repositorio_relacion.create_relationship(
+                    self.repositorio_relacion.create(
                         diagram=diagrama,
-                        relationship_data=datos_rel,
+                        relation_data=datos_rel,
                         class_mapping=mapeo_clases
                     )
 
@@ -244,3 +244,7 @@ class ServicioDiagrama:
     def eliminar_diagrama(self, diagrama_id: str) -> bool:
         """Eliminar un diagrama"""
         return self.repositorio_diagrama.delete(diagrama_id)
+
+
+# Alias en inglés para compatibilidad
+DiagramService = ServicioDiagrama

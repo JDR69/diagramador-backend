@@ -13,7 +13,7 @@ import os
 
 from ..models import Diagrama
 from ..serializers import SerializadorDiagrama, SerializadorCrearDiagrama
-from ..services.DiagramService import ServicioDiagrama
+from ..services import ServicioDiagrama
 
 logger = logging.getLogger(__name__)
 

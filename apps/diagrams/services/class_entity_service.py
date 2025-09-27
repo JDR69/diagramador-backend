@@ -7,7 +7,7 @@ class ClassEntityService:
     def __init__(self):
         self.class_repo = ClassEntityRepository()
 
-    def agregar_atributo(self, class_id: str, attribute_data: Dict[str, Any]) -> AtributoClase:
+    def add_attribute(self, class_id: str, attribute_data: Dict[str, Any]) -> AtributoClase:
         """Agregar atributo a una clase"""
         class_entity = self.class_repo.get_by_id(class_id)
         return AtributoClase.objects.create(
@@ -15,7 +15,7 @@ class ClassEntityService:
             **attribute_data
         )
 
-    def eliminar_atributo(self, class_id: str, attribute_name: str) -> bool:
+    def remove_attribute(self, class_id: str, attribute_name: str) -> bool:
         """Eliminar atributo de una clase"""
         try:
             class_entity = self.class_repo.get_by_id(class_id)
@@ -25,7 +25,7 @@ class ClassEntityService:
         except AtributoClase.DoesNotExist:
             return False
 
-    def actualizar_posicion_clase(self, class_id: str, position: Dict[str, int]) -> EntidadClase:
+    def update_class_position(self, class_id: str, position: Dict[str, int]) -> EntidadClase:
         """Actualizar posición de la clase"""
         class_entity = self.class_repo.get_by_id(class_id)
         class_entity.position_x = position['x']
