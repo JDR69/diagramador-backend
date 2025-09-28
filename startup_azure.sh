@@ -27,6 +27,17 @@ python manage.py collectstatic --noinput --clear
 echo "=== Verificando configuración ==="
 python manage.py check --deploy
 
-echo "=== Iniciando servidor Daphne ==="
-# Iniciar con Daphne para soporte de WebSockets
-exec daphne -b 0.0.0.0 -p $PORT diagram_backend.asgi:application --verbosity 2
+echo "=== Iniciando servidor Gunicorn ==="
+# Asegurarse de que la variable PORT esté definida (Azure Web Apps la define automáticamente)
+PORT="${PORT:-8000}"
+echo "Puerto utilizado: $PORT"
+
+# Iniciar con Gunicorn para mayor estabilidad en producción
+exec gunicorn diagram_backend.wsgi:application \
+    --bind=0.0.0.0:$PORT \
+    --workers=2 \
+    --threads=4 \
+    --timeout=120 \
+    --access-logfile=- \
+    --error-logfile=- \
+    --log-level=info

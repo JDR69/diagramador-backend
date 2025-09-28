@@ -26,5 +26,7 @@ uvicorn[standard]==0.24.0
 # Task queue (optional)
 celery==5.3.4
 
+# Healthchecks
+requests==2.31.0
 
 

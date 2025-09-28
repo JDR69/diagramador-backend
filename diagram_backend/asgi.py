@@ -1,15 +1,28 @@
 
 import os
+import django
+
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'diagram_backend.settings')
+django.setup()
+
 from django.core.asgi import get_asgi_application
 from channels.routing import ProtocolTypeRouter, URLRouter
 from channels.auth import AuthMiddlewareStack
-import diagram_backend.routing
+from django.urls import path
+from apps.diagrams import consumers
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'diagram_backend.settings')
+# Aplicación HTTP estándar
+http_application = get_asgi_application()
 
+# Configuración de rutas de WebSocket
+websocket_urlpatterns = [
+    path("ws/collaboration/<str:diagram_id>/", consumers.CollaborationConsumer.as_asgi()),
+]
+
+# Configuración de la aplicación ASGI
 application = ProtocolTypeRouter({
-    "http": get_asgi_application(),
+    "http": http_application,
     "websocket": AuthMiddlewareStack(
-        diagram_backend.routing.application
+        URLRouter(websocket_urlpatterns)
     ),
 })
