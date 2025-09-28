@@ -19,5 +19,5 @@ def root_view(request):
 urlpatterns = [
     path('', root_view, name='root'),
     path('admin/', admin.site.urls),
-    path('api/app/diagrams/', include('apps.diagrams.urls')),
+    # path('api/app/diagrams/', include('apps.diagrams.urls')),  # Temporalmente desactivado
 ]
