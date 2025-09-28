@@ -24,18 +24,23 @@ jobs:
           python-version: '3.13'
 
       - name: Install dependencies
-        run: pip install -r backend/requirements.txt
+        # Repo root ya ES el backend; antes fallaba buscando backend/requirements.txt
+        run: pip install -r requirements.txt
 
       # Aquí podrías agregar pruebas: python manage.py test
 
       - name: Generate build artifact (backend only)
         run: |
+          set -e
           mkdir -p artifact
-          cp -R backend/* artifact/
+          # Copiar todo el código del backend (el root actual) excepto el propio directorio artifact y .git
+          find . -maxdepth 1 -mindepth 1 \
+            ! -name artifact \
+            ! -name .git \
+            -exec cp -R {} artifact/ \;
           chmod +x artifact/startup.sh || true
-          # Remover entornos virtuales si existieran
-          rm -rf artifact/venv || true
-          rm -rf artifact/.venv || true
+          # Limpieza de posibles entornos locales
+          rm -rf artifact/venv artifact/.venv || true
 
       - name: Upload artifact for deployment
         uses: actions/upload-artifact@v4
