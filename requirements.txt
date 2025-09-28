@@ -27,10 +27,6 @@ whitenoise
 requests
 
 ############################################
-# Servidor WSGI opcional (legacy HTTP only). Mantener si quieres fallback sin websockets.
-gunicorn
-
-############################################
 # Empaquetado / build (generalmente ya vienen en entorno, pero explícitos por compatibilidad)
 setuptools
 wheel
