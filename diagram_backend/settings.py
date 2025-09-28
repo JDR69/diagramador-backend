@@ -1,6 +1,6 @@
 
 """
-Configuración de Django para el proyecto diagram_backend.
+Configuración de Django para el proy41ecto diagram_backend.
 """
 
 import os
