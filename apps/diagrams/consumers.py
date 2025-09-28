@@ -1,61 +1,56 @@
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
+import traceback
 
 # Consumidor WebSocket para colaboración en diagramas
 class CollaborationConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        self.diagram_id = self.scope['url_route']['kwargs']['diagram_id']
-        self.room_group_name = f'collaboration_{self.diagram_id}'
-
-        # Unirse al grupo de la sala
-        await self.channel_layer.group_add(
-            self.room_group_name,
-            self.channel_name
-        )
-        await self.accept()
+        try:
+            self.diagram_id = self.scope['url_route']['kwargs']['diagram_id']
+            self.room_group_name = f'collaboration_{self.diagram_id}'
+            print(f"[WS] connect attempt diagram_id={self.diagram_id} channel={self.channel_name}")
+            await self.channel_layer.group_add(self.room_group_name, self.channel_name)
+            await self.accept()
+            print(f"[WS] connected diagram_id={self.diagram_id} channel={self.channel_name}")
+        except Exception as e:
+            print(f"[WS][ERROR] connect failed: {e}\n{traceback.format_exc()}")
+            # Rechazar conexión si algo falla
+            await self.close(code=4400)
 
     async def disconnect(self, close_code):
-        # Salir del grupo de la sala
-        await self.channel_layer.group_discard(
-            self.room_group_name,
-            self.channel_name
-        )
+        try:
+            print(f"[WS] disconnect diagram_id={getattr(self,'diagram_id',None)} channel={self.channel_name} code={close_code}")
+            if hasattr(self, 'room_group_name'):
+                await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
+        except Exception as e:
+            print(f"[WS][ERROR] during disconnect: {e}")
 
     async def receive(self, text_data):
-        data = json.loads(text_data)
+        try:
+            data = json.loads(text_data)
+        except Exception as e:
+            print(f"[WS][ERROR] invalid JSON: {e} raw={text_data[:200]}")
+            return
         event_type = data.get('type')
         payload = data.get('payload', {})
-        # Difundir eventos de handshake y actualización al grupo
-        if event_type in ["request_initial_state", "initial_state"]:
-            # Para handshake, siempre reenviar a todos (los clientes filtran por userId)
-            await self.channel_layer.group_send(
-                self.room_group_name,
-                {
-                    'type': 'collaboration_event',
-                    'event_type': event_type,
-                    'payload': payload,
-                }
-            )
-        else:
-            # Difundir al grupo, reenviando tipo y payload
-            await self.channel_layer.group_send(
-                self.room_group_name,
-                {
-                    'type': 'collaboration_event',
-                    'event_type': event_type,
-                    'payload': payload,
-                }
-            )
+        print(f"[WS] recv type={event_type} diagram={getattr(self,'diagram_id',None)}")
+        target = {
+            'type': 'collaboration_event',
+            'event_type': event_type,
+            'payload': payload,
+        }
+        await self.channel_layer.group_send(self.room_group_name, target)
 
     async def collaboration_event(self, event):
-        # Reenviar el tipo y payload tal como lo espera el frontend
-        await self.send(text_data=json.dumps({
-            'type': event['event_type'],
-            'payload': event['payload'],
-        }))
-        # Si el tipo termina en '_update', también reenviar con '_updated' (ej: class_update -> class_updated)
-        if event['event_type'] and event['event_type'].endswith('_update'):
+        try:
             await self.send(text_data=json.dumps({
-                'type': event['event_type'] + 'd',
+                'type': event['event_type'],
                 'payload': event['payload'],
             }))
+            if event['event_type'] and event['event_type'].endswith('_update'):
+                await self.send(text_data=json.dumps({
+                    'type': event['event_type'] + 'd',
+                    'payload': event['payload'],
+                }))
+        except Exception as e:
+            print(f"[WS][ERROR] send failure: {e}")
