@@ -16,7 +16,7 @@ SECRET_KEY = config('SECRET_KEY', default='django-insecure-change-me-in-producti
 # ADVERTENCIA DE SEGURIDAD: no ejecutes con debug activado en producción.
 DEBUG = config('DEBUG', default=True, cast=bool)
 
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1', cast=lambda v: [s.strip() for s in v.split(',')])
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,*.azurewebsites.net', cast=lambda v: [s.strip() for s in v.split(',')])
 
 # Definición de aplicaciones
 DJANGO_APPS = [

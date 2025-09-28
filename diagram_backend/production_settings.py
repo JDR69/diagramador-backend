@@ -19,8 +19,18 @@ if os.getenv('DATABASE_URL'):
     })
 
 # Configuración adicional para producción
-DEBUG = False
-ALLOWED_HOSTS = ['*']  # Configurar según tu dominio
+# En producción, DEBUG DEBE ser False por seguridad
+DEBUG = config('DEBUG', default=False, cast=bool)
+# Si necesitas debug temporalmente en producción (NO recomendado), 
+# configura la variable de entorno DEBUG=True en Azure
+
+# Hosts permitidos específicos para Azure
+ALLOWED_HOSTS = [
+    'diagram-class-backend-djr-at04hdp0qa6vdk48.brazilsouth-01.azurewebsites.net',
+    '*.azurewebsites.net',
+    'localhost',
+    '127.0.0.1'
+]
 
 # Logging optimizado para producción
 LOGGING['loggers']['django.db.backends']['level'] = 'ERROR'  # Solo errores críticos
