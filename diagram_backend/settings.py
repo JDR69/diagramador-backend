@@ -53,8 +53,8 @@ TEMPLATES = [
     },
 ]
 WSGI_APPLICATION = 'diagram_backend.wsgi.application'
-# Use Channels routing (ProtocolTypeRouter) so websocket paths in routing.py become active
-ASGI_APPLICATION = 'diagram_backend.routing.application'
+# ASGI principal (HTTP + WebSockets) definido en asgi.py
+ASGI_APPLICATION = 'diagram_backend.asgi.application'
 DATABASES = {
     'default': dj_database_url.config(
         default=config('DATABASE_URL', default=f'sqlite:///{BASE_DIR / "db.sqlite3"}'),

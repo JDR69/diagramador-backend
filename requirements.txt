@@ -1,30 +1,43 @@
-# Core Django dependencies
-django==4.2.7
-djangorestframework==3.14.0
-django-cors-headers==4.3.1
+############################################
+# Runtime Core
+############################################
+# Alinear con la versión realmente usada localmente (ver salida del servidor: Django 5.2.6)
+django==5.2.6
+djangorestframework
+django-cors-headers
 
-# Database
-psycopg2-binary==2.9.9
-dj-database-url==2.1.0
+############################################
+# Async / WebSockets (Channels + Redis layer)
+############################################
+channels
+channels-redis
+daphne  # Servidor ASGI para producción (reemplaza uso directo de gunicorn para websockets)
 
-# Environment and configuration
-python-decouple==3.8
+############################################
+# Base de datos
+############################################
+psycopg[binary]  # Driver PostgreSQL (psycopg3); elimina necesidad de psycopg2-binary
+dj-database-url
 
-# Static files serving
-whitenoise==6.6.0
+############################################
+# Config / Utilidades
+############################################
+python-decouple
+whitenoise
+requests
 
-# Production WSGI server
-gunicorn==21.2.0
+############################################
+# Servidor WSGI opcional (legacy HTTP only). Mantener si quieres fallback sin websockets.
+gunicorn
 
-# HTTP client
-requests==2.31.0
+############################################
+# Empaquetado / build (generalmente ya vienen en entorno, pero explícitos por compatibilidad)
+setuptools
+wheel
 
-# Additional dependencies for Azure deployment
-setuptools==69.0.2
-wheel==0.42.0
+############################################
+# Dependencias indirectas fijadas solo si hace falta reproducibilidad estricta
+# (Puedes ejecutar `pip freeze > requirements.lock.txt` para snapshot completo)
 
-# Security and utilities
-certifi==2023.11.17
-urllib3==2.1.0
 
 
