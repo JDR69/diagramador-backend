@@ -82,20 +82,21 @@ ASGI_APPLICATION = 'diagram_backend.asgi.application'  # Reactivado para WebSock
 
 # Base de datos
 # Configuración que funciona tanto para desarrollo local como Azure
-DATABASE_URL = config('DATABASE_URL', default=None)
+DATABASE_URL = config('DATABASE_URL', default='postgresql://database_diagramador_user:CAyy658XSZ1n9sDm426Mz44OUA0Kz8KL@dpg-d35loafdiees738dnvk0-a.oregon-postgres.render.com/database_diagramador')
+
 if DATABASE_URL:
-    # Configuración para Azure/Producción
+    # Configuración para Azure/Producción con URL externa de Render
     DATABASES = {
         'default': dj_database_url.parse(DATABASE_URL, conn_max_age=0)
     }
-    # Configuración optimizada para Azure
+    # Configuración optimizada para PostgreSQL externa
     DATABASES['default'].update({
         'CONN_MAX_AGE': 0,  # Cerrar conexiones inmediatamente
         'CONN_HEALTH_CHECKS': True,
         'OPTIONS': {
-            'connect_timeout': 5,
+            'connect_timeout': 10,  # Timeout más largo para conexión externa
             'keepalives': 0,
-            'sslmode': 'require' if 'postgresql' in DATABASE_URL else 'disable',
+            'sslmode': 'require',
         }
     })
 else:
