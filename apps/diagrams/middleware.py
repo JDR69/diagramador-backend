@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 class ConnectionCleanupMiddleware(MiddlewareMixin):
     """
-    Middleware que cierra todas las conexiones de base de datos después de cada request.
+    Middlewaree que cierra todas las conexiones de base de datos después de cada request.
     Esto es especialmente útil en servicios con límites estrictos de conexión como Render.
     """
     
