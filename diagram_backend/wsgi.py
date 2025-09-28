@@ -1,6 +1,4 @@
 
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
 """
 WSGI config for diagram_backend project.
 
