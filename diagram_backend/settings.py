@@ -180,16 +180,24 @@ CORS_ALLOWED_ORIGINS = [
 ]
 
 # Configuración de Channels para WebSockets
+REDIS_URL = config('REDIS_URL', default='rediss://red-d37o1gvfte5s73beke6g:3mxtZQdCMvOHL22oggixLyRN2D8SrtXu@oregon-keyvalue.render.com:6379')
+
 CHANNEL_LAYERS = {
     'default': {
-        'BACKEND': 'channels.layers.InMemoryChannelLayer'  # Para desarrollo/Azure básico
-        # Para producción con Redis, usar: 'channels_redis.core.RedisChannelLayer'
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            "hosts": [REDIS_URL],
+            "symmetric_encryption_keys": [SECRET_KEY],
+        },
     },
 }
 
-# Configuración de Celery (opcional por ahora)
-# CELERY_BROKER_URL = config('REDIS_URL', default='redis://localhost:6379/0')
-# CELERY_RESULT_BACKEND = config('REDIS_URL', default='redis://localhost:6379/0')
+# Configuración de Celery con Redis externo
+CELERY_BROKER_URL = REDIS_URL
+CELERY_RESULT_BACKEND = REDIS_URL
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
 
 # Configuración de integración de IA (opcional)
 # GROQ_API_KEY = config('GROQ_API_KEY', default='')
