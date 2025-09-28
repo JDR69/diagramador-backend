@@ -22,11 +22,12 @@ whitenoise==6.6.0
 # ASGI/WSGI servers
 gunicorn==21.2.0
 uvicorn[standard]==0.24.0
+wfastcgi==3.0.0  # Necesario para Azure App Service con FastCGI
 
-# Task queue (optional)
+# Task queue (opcional)
 celery==5.3.4
 
-# Healthchecks
+# Utilidades
 requests==2.31.0
 
 
