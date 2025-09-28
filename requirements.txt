@@ -7,14 +7,24 @@ django-cors-headers==4.3.1
 psycopg2-binary==2.9.9
 dj-database-url==2.1.0
 
-# Utilities
+# Environment and configuration
 python-decouple==3.8
+
+# Static files serving
 whitenoise==6.6.0
 
 # Production WSGI server
 gunicorn==21.2.0
 
-# Utilities
+# HTTP client
 requests==2.31.0
+
+# Additional dependencies for Azure deployment
+setuptools==69.0.2
+wheel==0.42.0
+
+# Security and utilities
+certifi==2023.11.17
+urllib3==2.1.0
 
 
