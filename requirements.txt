@@ -25,3 +25,6 @@ uvicorn[standard]==0.24.0
 
 # Task queue (optional)
 celery==5.3.4
+
+
+
