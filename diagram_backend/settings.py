@@ -1,6 +1,6 @@
 
 """
-Configuración de Django para el proy41ecto diagram_backend.
+Configuración de Django para el proyecto diagram_backend.
 """
 
 import os
@@ -15,10 +15,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-change-me-in-production')
 
 # ADVERTENCIA DE SEGURIDAD: no ejecutes con debug activado en producción.
-DEBUG = config('DEBUG', default=True, cast=bool)
+DEBUG = config('DEBUG', default=False, cast=bool)
 
 # Configuración de hosts permitidos - funciona tanto para desarrollo como producción
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,diagram-class-backend-jdr-atc4hdgcgafvdka8.brazilsouth-01.azurewebsites.net,*.azurewebsites.net', cast=lambda v: [s.strip() for s in v.split(',')])
+ALLOWED_HOSTS = ['*']  # Temporal para diagnóstico
 
 # Definición de aplicaciones
 DJANGO_APPS = [
@@ -48,11 +48,10 @@ MIDDLEWARE = [
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
+    # 'django.middleware.csrf.CsrfViewMiddleware',  # Temporalmente deshabilitado
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'apps.diagrams.middleware.ConnectionCleanupMiddleware',  # Cleanup de conexiones
 ]
 
 ROOT_URLCONF = 'diagram_backend.urls'
@@ -162,100 +161,36 @@ REST_FRAMEWORK = {
     'PAGE_SIZE': 20,
 }
 
-# Configuración de CORS - adaptable para desarrollo y producción
-CORS_ALLOW_ALL_ORIGINS = config('CORS_ALLOW_ALL_ORIGINS', default=True, cast=bool)
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "https://localhost:3000",
-    "https://127.0.0.1:3000",
-    "https://diagram-class-backend-jdr-atc4hdgcgafvdka8.brazilsouth-01.azurewebsites.net",
-]
-
+# Configuración de CORS - muy permisiva para diagnóstico
+CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOW_HEADERS = [
-    'accept',
-    'accept-encoding',
-    'authorization',
-    'content-type',
-    'dnt',
-    'origin',
-    'user-agent',
-    'x-csrftoken',
-    'x-requested-with',
-]
 
-# Configuración CSRF para producción
-if not DEBUG:
-    CSRF_TRUSTED_ORIGINS = [
-        'https://diagram-class-backend-jdr-atc4hdgcgafvdka8.brazilsouth-01.azurewebsites.net',
-        'https://*.azurewebsites.net',
-    ]
-
-# Configuración de Channels para producción (Redis)
+# Configuración de Channels simplificada (sin Redis por ahora)
 CHANNEL_LAYERS = {
     'default': {
-        'BACKEND': 'channels_redis.core.RedisChannelLayer',
-        'CONFIG': {
-            'hosts': [config('REDIS_URL', default='redis://localhost:6379')],
-        },
+        'BACKEND': 'channels.layers.InMemoryChannelLayer'
     },
 }
 
-# Configuración de Celery
-CELERY_BROKER_URL = config('REDIS_URL', default='redis://localhost:6379/0')
-CELERY_RESULT_BACKEND = config('REDIS_URL', default='redis://localhost:6379/0')
+# Configuración de Celery (opcional por ahora)
+# CELERY_BROKER_URL = config('REDIS_URL', default='redis://localhost:6379/0')
+# CELERY_RESULT_BACKEND = config('REDIS_URL', default='redis://localhost:6379/0')
 
-# Configuración de integración de IA
-GROQ_API_KEY = config('GROQ_API_KEY', default='')
+# Configuración de integración de IA (opcional)
+# GROQ_API_KEY = config('GROQ_API_KEY', default='')
 
-# Configuración de logging que se adapta al entorno
+# Logging simplificado
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
-    'formatters': {
-        'verbose': {
-            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
-            'style': '{',
-        },
-        'simple': {
-            'format': '{levelname} {message}',
-            'style': '{',
-        },
-    },
     'handlers': {
         'console': {
-            'level': 'DEBUG' if DEBUG else 'INFO',
-            'class': 'logging.StreamHandler',
-            'formatter': 'verbose',
-        },
-    },
-    'loggers': {
-        'django.db.backends': {
-            'level': 'WARNING',
-            'handlers': ['console'],
-            'propagate': False,
-        },
-        'apps.diagrams': {
-            'level': 'DEBUG' if DEBUG else 'INFO',
-            'handlers': ['console'],
-            'propagate': False,
-        },
-        'django': {
             'level': 'INFO',
-            'handlers': ['console'],
-            'propagate': False,
+            'class': 'logging.StreamHandler',
         },
     },
     'root': {
-        'level': 'WARNING',
         'handlers': ['console'],
+        'level': 'INFO',
     },
 }
-
-# Configuración de seguridad - solo en producción
-if not DEBUG:
-    SECURE_BROWSER_XSS_FILTER = True
-    SECURE_CONTENT_TYPE_NOSNIFF = True
-    X_FRAME_OPTIONS = 'DENY'
-    # Azure maneja el SSL, no necesitamos forzar redirect
