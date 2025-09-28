@@ -6,6 +6,7 @@ Configuración de Django para el proyecto diagram_backend.
 import os
 from pathlib import Path
 from decouple import config
+import dj_database_url
 
 # Construye rutas dentro del proyecto como: BASE_DIR / 'subcarpeta'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -16,7 +17,8 @@ SECRET_KEY = config('SECRET_KEY', default='django-insecure-change-me-in-producti
 # ADVERTENCIA DE SEGURIDAD: no ejecutes con debug activado en producción.
 DEBUG = config('DEBUG', default=True, cast=bool)
 
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,*.azurewebsites.net', cast=lambda v: [s.strip() for s in v.split(',')])
+# Configuración de hosts permitidos - funciona tanto para desarrollo como producción
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,diagram-class-backend-jdr-atc4hdgcgafvdka8.brazilsouth-01.azurewebsites.net,*.azurewebsites.net', cast=lambda v: [s.strip() for s in v.split(',')])
 
 # Definición de aplicaciones
 DJANGO_APPS = [
@@ -75,25 +77,25 @@ WSGI_APPLICATION = 'diagram_backend.wsgi.application'
 ASGI_APPLICATION = 'diagram_backend.asgi.application'
 
 # Base de datos
-# Usar URL completa para PostgreSQL de Render
-import dj_database_url
-
+# Configuración que funciona tanto para desarrollo local como Azure
 DATABASE_URL = config('DATABASE_URL', default=None)
 if DATABASE_URL:
+    # Configuración para Azure/Producción
     DATABASES = {
-        'default': dj_database_url.parse(DATABASE_URL, conn_max_age=0)  # Desactivar pooling persistente
+        'default': dj_database_url.parse(DATABASE_URL, conn_max_age=0)
     }
-    # Configuración optimizada para Render con límite de conexiones bajo
+    # Configuración optimizada para Azure
     DATABASES['default'].update({
         'CONN_MAX_AGE': 0,  # Cerrar conexiones inmediatamente
         'CONN_HEALTH_CHECKS': True,
         'OPTIONS': {
-            'connect_timeout': 5,  # Timeout más corto
-            'keepalives': 0,  # Desactivar keepalives
+            'connect_timeout': 5,
+            'keepalives': 0,
             'sslmode': 'require' if 'postgresql' in DATABASE_URL else 'disable',
         }
     })
 else:
+    # Configuración para desarrollo local
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
@@ -102,7 +104,7 @@ else:
             'PASSWORD': config('POSTGRES_PASSWORD', default='diagramsecret'),
             'HOST': config('POSTGRES_HOST', default='localhost'),
             'PORT': config('POSTGRES_PORT', default='5432'),
-            'CONN_MAX_AGE': 0,  # No pooling
+            'CONN_MAX_AGE': 0,
             'CONN_HEALTH_CHECKS': True,
             'OPTIONS': {
                 'sslmode': 'require',
@@ -160,13 +162,14 @@ REST_FRAMEWORK = {
     'PAGE_SIZE': 20,
 }
 
-# Configuración de CORS
-CORS_ALLOW_ALL_ORIGINS = True  # Para desarrollo, permite todos los orígenes
+# Configuración de CORS - adaptable para desarrollo y producción
+CORS_ALLOW_ALL_ORIGINS = config('CORS_ALLOW_ALL_ORIGINS', default=True, cast=bool)
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "https://localhost:3000",
     "https://127.0.0.1:3000",
+    "https://diagram-class-backend-jdr-atc4hdgcgafvdka8.brazilsouth-01.azurewebsites.net",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
@@ -181,6 +184,13 @@ CORS_ALLOW_HEADERS = [
     'x-csrftoken',
     'x-requested-with',
 ]
+
+# Configuración CSRF para producción
+if not DEBUG:
+    CSRF_TRUSTED_ORIGINS = [
+        'https://diagram-class-backend-jdr-atc4hdgcgafvdka8.brazilsouth-01.azurewebsites.net',
+        'https://*.azurewebsites.net',
+    ]
 
 # Configuración de Channels para producción (Redis)
 CHANNEL_LAYERS = {
@@ -199,7 +209,7 @@ CELERY_RESULT_BACKEND = config('REDIS_URL', default='redis://localhost:6379/0')
 # Configuración de integración de IA
 GROQ_API_KEY = config('GROQ_API_KEY', default='')
 
-# Configuración de logging
+# Configuración de logging que se adapta al entorno
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -222,7 +232,7 @@ LOGGING = {
     },
     'loggers': {
         'django.db.backends': {
-            'level': 'WARNING',  # Solo errores críticos de DB
+            'level': 'WARNING',
             'handlers': ['console'],
             'propagate': False,
         },
@@ -242,3 +252,10 @@ LOGGING = {
         'handlers': ['console'],
     },
 }
+
+# Configuración de seguridad - solo en producción
+if not DEBUG:
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    X_FRAME_OPTIONS = 'DENY'
+    # Azure maneja el SSL, no necesitamos forzar redirect
