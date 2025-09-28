@@ -1,1 +1,7 @@
-web: daphne -b 0.0.0.0 -p $PORT diagram_backend.asgi:application
+web: daphne -b 0.0.0.0 -p 8000 diagram_backend.asgi:application
+
+# Notas:
+# - Azure App Service para Python normalmente expone el puerto 8000 internamente.
+# - Usar "Procfile" con P mayúscula; la variante en minúsculas puede ser ignorada.
+# - Si se necesitara un puerto dinámico se podría usar "$PORT"; en App Service estándar no es obligatorio.
+# - Este comando asegura que se levante ASGI (Daphne) y no el servidor WSGI por defecto (Gunicorn), habilitando WebSockets.web: daphne -b 0.0.0.0 -p $PORT diagram_backend.asgi:application
