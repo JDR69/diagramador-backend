@@ -15,7 +15,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-change-me-in-production')
 
 # ADVERTENCIA DE SEGURIDAD: no ejecutes con debug activado en producción.
-DEBUG = config('DEBUG', default=False, cast=bool)
+DEBUG = True  # TEMPORAL para diagnóstico - cambiar a False después
 
 # Configuración de hosts permitidos - funciona tanto para desarrollo como producción
 ALLOWED_HOSTS = ['*']  # Temporal para diagnóstico
@@ -33,7 +33,7 @@ DJANGO_APPS = [
 THIRD_PARTY_APPS = [
     'rest_framework',
     'corsheaders',
-    'channels',
+    # 'channels',  # Temporalmente deshabilitado
 ]
 
 LOCAL_APPS = [
@@ -73,7 +73,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'diagram_backend.wsgi.application'
-ASGI_APPLICATION = 'diagram_backend.asgi.application'
+# ASGI_APPLICATION = 'diagram_backend.asgi.application'  # Temporalmente deshabilitado
 
 # Base de datos
 # Configuración que funciona tanto para desarrollo local como Azure
@@ -165,12 +165,12 @@ REST_FRAMEWORK = {
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 
-# Configuración de Channels simplificada (sin Redis por ahora)
-CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels.layers.InMemoryChannelLayer'
-    },
-}
+# Configuración de Channels simplificada (temporalmente deshabilitada)
+# CHANNEL_LAYERS = {
+#     'default': {
+#         'BACKEND': 'channels.layers.InMemoryChannelLayer'
+#     },
+# }
 
 # Configuración de Celery (opcional por ahora)
 # CELERY_BROKER_URL = config('REDIS_URL', default='redis://localhost:6379/0')
