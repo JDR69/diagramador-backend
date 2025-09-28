@@ -38,7 +38,7 @@ DJANGO_APPS = [
 THIRD_PARTY_APPS = [
     'rest_framework',
     'corsheaders',
-    # 'channels',  # Temporalmente deshabilitado
+    'channels',  # Reactivado para WebSockets
 ]
 
 LOCAL_APPS = [
@@ -78,7 +78,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'diagram_backend.wsgi.application'
-# ASGI_APPLICATION = 'diagram_backend.asgi.application'  # Temporalmente deshabilitado
+ASGI_APPLICATION = 'diagram_backend.asgi.application'  # Reactivado para WebSockets
 
 # Base de datos
 # Configuración que funciona tanto para desarrollo local como Azure
@@ -170,12 +170,13 @@ REST_FRAMEWORK = {
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 
-# Configuración de Channels simplificada (temporalmente deshabilitada)
-# CHANNEL_LAYERS = {
-#     'default': {
-#         'BACKEND': 'channels.layers.InMemoryChannelLayer'
-#     },
-# }
+# Configuración de Channels para WebSockets
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels.layers.InMemoryChannelLayer'  # Para desarrollo/Azure básico
+        # Para producción con Redis, usar: 'channels_redis.core.RedisChannelLayer'
+    },
+}
 
 # Configuración de Celery (opcional por ahora)
 # CELERY_BROKER_URL = config('REDIS_URL', default='redis://localhost:6379/0')
