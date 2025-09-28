@@ -15,9 +15,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    defaults:
-      run:
-        working-directory: backend
     steps:
       - uses: actions/checkout@v4
 
@@ -27,18 +24,18 @@ jobs:
           python-version: '3.13'
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r backend/requirements.txt
 
       # Aquí podrías agregar pruebas: python manage.py test
 
       - name: Generate build artifact (backend only)
         run: |
-          mkdir -p ../artifact
-          chmod +x startup.sh || true
-          cp -R . ../artifact/
+          mkdir -p artifact
+          cp -R backend/* artifact/
+          chmod +x artifact/startup.sh || true
           # Remover entornos virtuales si existieran
-          rm -rf ../artifact/venv || true
-          rm -rf ../artifact/.venv || true
+          rm -rf artifact/venv || true
+          rm -rf artifact/.venv || true
 
       - name: Upload artifact for deployment
         uses: actions/upload-artifact@v4
