@@ -1,6 +1,5 @@
-web: daphne -b 0.0.0.0 -p 8000 backend.diagram_backend.asgi:application
+web: daphne -b 0.0.0.0 -p 8000 diagram_backend.asgi:application
 
-# Procfile en la raíz para que Azure/Oryx lo detecte.
-# Si todavía se levanta Gunicorn, eliminar 'gunicorn' de requirements.txt o añadir variable de App Service:
-#   SCM_DO_BUILD_DURING_DEPLOYMENT=true
-# y revisar logs de build para ver si reconoce este Procfile.
+# Procfile dentro de /backend (el directorio que despliegas). Al publicar solo esta carpeta,
+# la ruta del módulo ASGI es 'diagram_backend.asgi:application'.
+# Si Azure ignorara este Procfile, usa el fallback startup.sh y configura STARTUP_COMMAND.

@@ -6,15 +6,16 @@ Este proyecto usa Django Channels y necesita que el proceso se inicie con **Daph
 
 | Archivo | Propósito |
 |---------|-----------|
-| `backend/Procfile` | Procfile local dentro del subdirectorio backend. |
-| `Procfile` (raíz)  | Procfile raíz para que Oryx / Azure lo detecte. |
-| `backend/diagram_backend/asgi.py` | Punto de entrada ASGI (HTTP + WebSocket). |
-| `backend/apps/diagrams/consumers.py` | Consumer de colaboración. |
+| `Procfile` | Indica a Azure que debe iniciar Daphne (ASGI). |
+| `runtime.txt` | Fija versión de Python (3.13.0). |
+| `startup.sh` | Fallback manual si Procfile es ignorado (configurar STARTUP_COMMAND). |
+| `diagram_backend/asgi.py` | Punto de entrada ASGI (HTTP + WebSocket). |
+| `apps/diagrams/consumers.py` | Consumer de colaboración (Channels). |
 
 ## Comando de arranque
 
 ```
-web: daphne -b 0.0.0.0 -p 8000 backend.diagram_backend.asgi:application
+web: daphne -b 0.0.0.0 -p 8000 diagram_backend.asgi:application
 ```
 
 ## Variables requeridas
@@ -37,7 +38,13 @@ FRONTEND_ORIGINS=http://localhost:3000,https://<frontend>.azurewebsites.net
    ```
 
 ## Si aún se levanta Gunicorn
-Quitar `gunicorn` de `backend/requirements.txt` o agregar un `startup command` manual (si el plan / portal lo permite).
+1. Verifica que en el deployment realmente se sube este `Procfile`.
+2. Asegura variables (opcional): `ENABLE_ORYX_BUILD=true`, `WEBSITES_PORT=8000`.
+3. Configura en Azure App Service > Configuración > General un **Startup Command**:
+   ```
+   bash startup.sh
+   ```
+4. Revisa logs de arranque: debe aparecer `[startup] Using Daphne ASGI server` y luego logs de Daphne.
 
 ---
 Documento auxiliar generado automáticamente.
