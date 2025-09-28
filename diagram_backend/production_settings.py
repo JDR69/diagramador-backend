@@ -1,6 +1,6 @@
 """
 Configuración específica para producción con gestión optimizada de conexiones.
-Este archivo contiene overrides para producción que minimizan el uso de conexiones DB.
+Este archivo contiene overr4ides para producción que minimizan el uso de conexiones DB.
 """
 import os
 from .settings import *
