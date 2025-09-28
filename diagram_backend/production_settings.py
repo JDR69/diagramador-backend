@@ -40,10 +40,28 @@ LOGGING['root']['level'] = 'ERROR'
 MIDDLEWARE.insert(0, 'apps.diagrams.middleware.ConnectionCleanupMiddleware')
 
 # Configuración de seguridad adicional
-SECURE_SSL_REDIRECT = True
+SECURE_SSL_REDIRECT = False  # Azure maneja SSL
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
+
+# Configuración CSRF para producción
+CSRF_COOKIE_SECURE = False  # Azure termina SSL
+CSRF_COOKIE_HTTPONLY = False  # Permitir acceso desde JavaScript
+CSRF_TRUSTED_ORIGINS = [
+    'https://diagram-class-backend-djr-at04hdp0qa6vdk48.brazilsouth-01.azurewebsites.net',
+    'https://*.azurewebsites.net',
+]
+
+# Configuración CORS actualizada para producción
+CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOWED_ORIGINS = [
+    'https://diagram-class-backend-djr-at04hdp0qa6vdk48.brazilsouth-01.azurewebsites.net',
+    'http://localhost:3000',
+    'https://localhost:3000',
+    'https://*.azurewebsites.net',
+]
 
 # Cache para reducir consultas DB
 CACHES = {
@@ -60,3 +78,18 @@ CACHES = {
 # Sesiones en cache en lugar de DB
 SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
 SESSION_CACHE_ALIAS = 'default'
+
+# Configuración REST Framework para producción
+REST_FRAMEWORK = {
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.AllowAny',
+    ],
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+    ],
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 20,
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication',
+    ],
+}
