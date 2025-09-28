@@ -166,9 +166,17 @@ REST_FRAMEWORK = {
     'PAGE_SIZE': 20,
 }
 
-# Configuración de CORS - muy permisiva para diagnóstico
-CORS_ALLOW_ALL_ORIGINS = True
+# Configuración de CORS - permite conexiones desde el frontend
+CORS_ALLOW_ALL_ORIGINS = True  # Temporal para desarrollo
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "https://localhost:3000", 
+    "http://127.0.0.1:3000",
+    "https://127.0.0.1:3000",
+    # Agregar aquí la URL de tu frontend en Azure cuando la tengas:
+    # "https://tu-frontend-azure-url.azurewebsites.net",
+]
 
 # Configuración de Channels para WebSockets
 CHANNEL_LAYERS = {
