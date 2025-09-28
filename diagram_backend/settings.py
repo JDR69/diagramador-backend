@@ -15,10 +15,15 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-change-me-in-production')
 
 # ADVERTENCIA DE SEGURIDAD: no ejecutes con debug activado en producción.
-DEBUG = True  # TEMPORAL para diagnóstico - cambiar a False después
+DEBUG = config('DEBUG', default=False, cast=bool)  # Restaurar control por variable de entorno
 
-# Configuración de hosts permitidos - funciona tanto para desarrollo como producción
-ALLOWED_HOSTS = ['*']  # Temporal para diagnóstico
+# Configuración de hosts permitidos - ahora más específica
+ALLOWED_HOSTS = [
+    'diagram-class-backend-jdr-atc4hdgcgafvdka8.brazilsouth-01.azurewebsites.net',
+    '*.azurewebsites.net',
+    'localhost',
+    '127.0.0.1'
+]
 
 # Definición de aplicaciones
 DJANGO_APPS = [
