@@ -74,6 +74,25 @@ jobs:
           slot-name: 'Production'
           package: '.'
 
+      - name: Debug Procfile presence
+        run: |
+          echo "Contenido de Procfile desplegado (si existe):"
+          (test -f Procfile && cat Procfile) || echo "NO encontrado"
+          echo "Contenido de startup.sh (si existe):"
+          (test -f startup.sh && head -20 startup.sh) || echo "startup.sh NO encontrado"
+
+      - name: Forzar comando de arranque Daphne (startup.sh)
+        uses: azure/CLI@v2
+        with:
+          inlineScript: |
+            echo "Estableciendo STARTUP_COMMAND para usar startup.sh (Daphne)" 
+            az webapp config set \
+              --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+              --name diagram-class-backend \
+              --startup-file "bash startup.sh"
+            echo "Mostrando configuración resultante:" \
+            && az webapp config show --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} --name diagram-class-backend --query "{linuxFxVersion: linuxFxVersion, startupFile: siteConfig.appCommandLine}" -o json
+
       - name: Show deployed files list (debug)
         run: |
           echo "Listing top-level deployed files:" || true
