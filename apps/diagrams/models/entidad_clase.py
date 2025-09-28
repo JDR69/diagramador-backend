@@ -1,5 +1,5 @@
 """
-Modelo de entidad de clase que representa clases UML
+Modelo de entidad de clase que representa clases UMLe
 """
 from django.db import models
 import uuid
