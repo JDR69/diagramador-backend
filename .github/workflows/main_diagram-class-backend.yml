@@ -54,6 +54,8 @@ jobs:
     permissions:
       id-token: write
       contents: read
+    env:
+      RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
     steps:
       - name: Download artifact
         uses: actions/download-artifact@v4
@@ -82,16 +84,26 @@ jobs:
           (test -f startup.sh && head -20 startup.sh) || echo "startup.sh NO encontrado"
 
       - name: Forzar comando de arranque Daphne (startup.sh)
+        if: env.RESOURCE_GROUP != ''
+        continue-on-error: true
         uses: azure/CLI@v2
         with:
           inlineScript: |
-            echo "Estableciendo STARTUP_COMMAND para usar startup.sh (Daphne)" 
+            echo "RESOURCE_GROUP=${RESOURCE_GROUP}" 
+            echo "Estableciendo STARTUP_COMMAND para usar startup.sh (Daphne) (si Procfile fue ignorado)" 
             az webapp config set \
-              --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+              --resource-group $RESOURCE_GROUP \
               --name diagram-class-backend \
               --startup-file "bash startup.sh"
             echo "Mostrando configuración resultante:" \
-            && az webapp config show --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} --name diagram-class-backend --query "{linuxFxVersion: linuxFxVersion, startupFile: siteConfig.appCommandLine}" -o json
+            && az webapp config show --resource-group $RESOURCE_GROUP --name diagram-class-backend --query "{linuxFxVersion: linuxFxVersion, startupFile: siteConfig.appCommandLine}" -o json
+
+      - name: Aviso falta de RESOURCE_GROUP
+        if: env.RESOURCE_GROUP == ''
+        run: |
+          echo '---'
+          echo 'No se definió el secret AZURE_RESOURCE_GROUP. Para forzar el startup command crea un secret con ese nombre (valor = nombre exacto del Resource Group) o configúralo manualmente en el Portal (Configuration > General Settings > Startup Command: bash startup.sh)'
+          echo '---'
 
       - name: Show deployed files list (debug)
         run: |
