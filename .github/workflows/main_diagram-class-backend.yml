@@ -75,6 +75,7 @@ jobs:
           app-name: 'diagram-class-backend'
           slot-name: 'Production'
           package: '.'
+          startup-command: 'daphne -b 0.0.0.0 -p 8000 diagram_backend.asgi:application'
 
       - name: Debug Procfile presence
         run: |
