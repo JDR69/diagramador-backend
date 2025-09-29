@@ -11,7 +11,7 @@ from django.conf import settings
 import logging
 import os
 
-from ..models import Diagrama
+from ..models import Diagrama, EntidadClase
 from ..serializers import SerializadorDiagrama, SerializadorCrearDiagrama
 from ..services import ServicioDiagrama
 
@@ -32,9 +32,21 @@ def cerrar_conexiones():
 
 class DiagramViewSet(viewsets.ModelViewSet):
     """Conjunto de vistas para operaciones CRUD de diagramas"""
+    # Queryset base; se optimiza en get_queryset con prefetch
     queryset = Diagrama.objects.all()
     serializer_class = SerializadorDiagrama
     servicio = ServicioDiagrama()
+
+    def get_queryset(self):
+        """Optimiza las consultas al recuperar diagramas para reducir la latencia en refresh.
+
+        Prefetch de:
+          - classes + attributes
+          - relationships y sus from/to (select_related)
+        """
+        return (Diagrama.objects
+                .prefetch_related('classes__attributes')
+                .prefetch_related('relationships__from_class', 'relationships__to_class'))
 
     def get_serializer_class(self):
         if self.action == 'create':
@@ -331,6 +343,51 @@ class DiagramViewSet(viewsets.ModelViewSet):
             'classes': classes_data,
             'relationships': relations_data
         })
+
+    @action(detail=True, methods=['patch'], url_path='positions')
+    def actualizar_posiciones(self, request, pk=None):
+        """Actualizar posiciones de múltiples clases en un solo request.
+
+        Body esperado:
+        {
+          "classes": [
+             {"id": "uuid", "position": {"x": int, "y": int}}, ...
+          ]
+        }
+        """
+        diagrama = self.get_object()
+        classes_payload = request.data.get('classes', [])
+        if not isinstance(classes_payload, list):
+            return Response({'error': 'Formato inválido: classes debe ser lista'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Mapear datos entrantes
+        updates = {}
+        for item in classes_payload:
+            cid = item.get('id')
+            pos = (item.get('position') or {}) if isinstance(item, dict) else {}
+            if cid and isinstance(pos, dict) and 'x' in pos and 'y' in pos:
+                updates[cid] = pos
+
+        if not updates:
+            return Response({'updated': 0, 'classes': []})
+
+        # Cargar solo las clases necesarias pertenecientes al diagrama
+        clases = EntidadClase.objects.filter(diagram=diagrama, id__in=list(updates.keys()))
+        modificadas = []
+        for cls in clases:
+            new_pos = updates.get(str(cls.id)) or updates.get(cls.id)
+            if new_pos:
+                changed = (cls.position_x != new_pos['x']) or (cls.position_y != new_pos['y'])
+                cls.position_x = new_pos['x']
+                cls.position_y = new_pos['y']
+                if changed:
+                    cls.save(update_fields=['position_x', 'position_y', 'updated_at'])
+                modificadas.append({
+                    'id': str(cls.id),
+                    'position': {'x': cls.position_x, 'y': cls.position_y}
+                })
+
+        return Response({'updated': len(modificadas), 'classes': modificadas})
 
 
 # Legacy alias
