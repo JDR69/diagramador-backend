@@ -5,7 +5,6 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
-from django.db import connections
 from django.utils import timezone
 from django.conf import settings
 import logging
@@ -18,16 +17,6 @@ from ..services import ServicioDiagrama
 logger = logging.getLogger(__name__)
 
 
-def cerrar_conexiones():
-    """Utilidad para cerrar todas las conexiones de base de datos."""
-    try:
-        for alias in connections:
-            connection = connections[alias]
-            if connection.connection is not None:
-                connection.close()
-                logger.debug(f"Conexión '{alias}' cerrada")
-    except Exception as e:
-        logger.error(f"Error cerrando conexiones: {e}")
 
 
 class DiagramViewSet(viewsets.ModelViewSet):
@@ -132,18 +121,15 @@ class DiagramViewSet(viewsets.ModelViewSet):
             try:
                 diagrama = self.servicio.actualizar_diagrama(pk, request.data)
                 serializador_respuesta = self.get_serializer(diagrama)
-                cerrar_conexiones()
                 return Response(serializador_respuesta.data)
             except Exception as e:
                 logger.error(f"Error en servicio: {str(e)}", exc_info=True)
-                cerrar_conexiones()
                 return Response(
                     {'error': f'Error interno: {str(e)}'},
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
                 
         except Exception as e:
-            cerrar_conexiones()
             logger.error(f"Error general en update: {str(e)}", exc_info=True)
             return Response(
                 {'error': 'Error interno del servidor'},
@@ -161,7 +147,7 @@ class DiagramViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
         finally:
-            cerrar_conexiones()
+            pass
 
     @action(detail=False, methods=['get'])
     def health_check(self, request):
@@ -206,7 +192,7 @@ class DiagramViewSet(viewsets.ModelViewSet):
                 'timestamp': timezone.now().isoformat()
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         finally:
-            cerrar_conexiones()
+            pass
 
     @action(detail=True, methods=['post'])
     def duplicar(self, request, pk=None):
@@ -355,12 +341,6 @@ class DiagramViewSet(viewsets.ModelViewSet):
     def actualizar_posiciones(self, request, pk=None):
         """Actualizar posiciones de múltiples clases en un solo request.
 
-        Body esperado:
-        {
-          "classes": [
-             {"id": "uuid", "position": {"x": int, "y": int}}, ...
-          ]
-        }
         """
         diagrama = self.get_object()
         classes_payload = request.data.get('classes', [])

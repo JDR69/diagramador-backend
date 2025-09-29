@@ -1,21 +1,11 @@
 from typing import List, Dict, Any, Optional
 import logging
-from django.db import transaction, connections
+from django.db import transaction
 from ..models import Diagrama, EntidadClase, AtributoClase, Relacion
 from ..repositories import DiagramRepository, ClassEntityRepository, RelationshipRepository
 
 logger = logging.getLogger(__name__)
 
-def cerrar_conexiones():
-    """Utilidad para cerrar todas las conexiones de base de datos."""
-    try:
-        for alias in connections:
-            connection = connections[alias]
-            if connection.connection is not None:
-                connection.close()
-                logger.debug(f"Conexión '{alias}' cerrada")
-    except Exception as e:
-        logger.error(f"Error cerrando conexiones: {e}")
 
 class ServicioDiagrama:
     """Servicio para la lógica de negocio de diagramas"""
@@ -52,7 +42,7 @@ class ServicioDiagrama:
 
                 return diagrama
         finally:
-            cerrar_conexiones()
+            pass
 
     def actualizar_diagrama(self, diagrama_id: str, datos: Dict[str, Any]) -> Diagrama:
         """Actualizar diagrama con nueva información, incluyendo clases, atributos y relaciones"""
@@ -92,7 +82,7 @@ class ServicioDiagrama:
             logger.error(f"Error actualizando diagrama {diagrama_id}: {str(e)}", exc_info=True)
             raise
         finally:
-            cerrar_conexiones()
+            pass
 
     def _actualizar_clases_y_atributos(self, diagrama: Diagrama, datos_clases: List[Dict]):
         """Actualizar clases y atributos de un diagrama"""
