@@ -1,25 +1,38 @@
 import json
+import asyncio
 from channels.generic.websocket import AsyncWebsocketConsumer
 import traceback
 
 # Consumidor WebSocket para colaboración en diagramas
 class CollaborationConsumer(AsyncWebsocketConsumer):
     async def connect(self):
+        """Acepta la conexión y se une al grupo de colaboración.
+
+        El error 4400 que se veía en el cliente ocurría porque:
+          1. Se intentaba acceder a self.scope['loop'] (clave no existente) -> KeyError
+          2. El heartbeat hacía flood (sin await real) cuando channel_layer era None
+        Ambos provocaban cierre inmediato.
+        """
         try:
-            self.diagram_id = self.scope['url_route']['kwargs']['diagram_id']
+            self.diagram_id = self.scope['url_route']['kwargs'].get('diagram_id')
             self.room_group_name = f'collaboration_{self.diagram_id}'
             print(f"[WS] connect attempt diagram_id={self.diagram_id} channel={self.channel_name}")
-            if not self.channel_layer:  # capa no disponible
-                print("[WS][WARN] channel_layer no disponible, usando conexión directa sin grupos")
+
+            if not self.channel_layer:
+                print("[WS][WARN] channel_layer no disponible, operando en modo local (no multi-proceso)")
             else:
                 await self.channel_layer.group_add(self.room_group_name, self.channel_name)
+
             await self.accept()
             print(f"[WS] connected diagram_id={self.diagram_id} channel={self.channel_name}")
-            # Iniciar heartbeat (ping) para mantener viva la conexión en Azure LB
-            self.heartbeat_task = self.scope['loop'].create_task(self._heartbeat())
+
+            # Anunciar que un usuario se unió
+            await self._broadcast_internal('user_joined', {"userId": self.channel_name})
+
+            # Iniciar heartbeat usando asyncio (intervalo estable)
+            self.heartbeat_task = asyncio.create_task(self._heartbeat())
         except Exception as e:
             print(f"[WS][ERROR] connect failed: {e}\n{traceback.format_exc()}")
-            # Rechazar conexión si algo falla
             await self.close(code=4400)
 
     async def disconnect(self, close_code):
@@ -27,6 +40,9 @@ class CollaborationConsumer(AsyncWebsocketConsumer):
             print(f"[WS] disconnect diagram_id={getattr(self,'diagram_id',None)} channel={self.channel_name} code={close_code}")
             if hasattr(self, 'heartbeat_task'):
                 self.heartbeat_task.cancel()
+            # Avisar salida sólo si hubo connect exitoso
+            if getattr(self, 'diagram_id', None):
+                await self._broadcast_internal('user_left', {"userId": self.channel_name})
             if hasattr(self, 'room_group_name') and self.channel_layer:
                 await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
         except Exception as e:
@@ -49,8 +65,10 @@ class CollaborationConsumer(AsyncWebsocketConsumer):
         except Exception as e:
             print(f"[WS][ERROR] invalid JSON: {e} raw={text_data[:150]}")
             return
+
         event_type = data.get('type')
-        payload = data.get('payload', {}) or {}
+        # Aceptar tanto 'payload' como 'data' (flexibilidad con el frontend)
+        payload = data.get('payload') or data.get('data') or {}
         print(f"[WS] recv type={event_type} diagram={getattr(self,'diagram_id',None)}")
 
         # Adjuntar emisor
@@ -83,7 +101,7 @@ class CollaborationConsumer(AsyncWebsocketConsumer):
 
         if self.channel_layer:
             await self.channel_layer.group_send(self.room_group_name, envelope)
-        else:
+        else:  # modo local sin capa -> envío directo
             await self.collaboration_event(envelope)
 
     async def collaboration_event(self, event):
@@ -96,9 +114,25 @@ class CollaborationConsumer(AsyncWebsocketConsumer):
             print(f"[WS][ERROR] send failure: {e}")
 
     async def _heartbeat(self):
+        """Envía un ping cada 25s.
+
+        Antes se generaba flood porque no había un await real cuando no existía channel_layer.
+        """
         try:
             while True:
                 await self.send(text_data=json.dumps({'type': 'ping'}))
-                await self.channel_layer.sleep(25) if self.channel_layer else self.scope['loop'].call_later(25, lambda: None)
+                await asyncio.sleep(25)
         except Exception:
             pass
+
+    async def _broadcast_internal(self, event_type: str, payload: dict):
+        """Utilidad para emitir eventos internos (user_joined / user_left)."""
+        envelope = {
+            'type': 'collaboration_event',
+            'event_type': event_type,
+            'payload': {**payload, 'timestamp': __import__('time').time()},
+        }
+        if self.channel_layer:
+            await self.channel_layer.group_send(self.room_group_name, envelope)
+        else:
+            await self.collaboration_event(envelope)
