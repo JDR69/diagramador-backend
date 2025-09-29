@@ -9,6 +9,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-change-this-key')
 DEBUG = config('DEBUG', default=True, cast=bool)
 ALLOWED_HOSTS = list(config('DJANGO_ALLOWED_HOSTS', default='127.0.0.1,localhost', cast=Csv()))
+# Añadir automáticamente el hostname de Azure App Service si existe
+_azure_host = os.environ.get('WEBSITE_HOSTNAME')
+if _azure_host and _azure_host not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(_azure_host)
+# IPs internas usadas por health probes en App Service (evita DisallowedHost en logs)
+for _probe_ip in ('169.254.130.1', '169.254.130.2', '169.254.130.3'):
+    if _probe_ip not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(_probe_ip)
 if DEBUG:
     for host in ('127.0.0.1', 'localhost'):
         if host not in ALLOWED_HOSTS:
@@ -100,10 +108,26 @@ REST_FRAMEWORK = {
 ############################################
 # Channels / WebSockets
 ############################################
-# Si existe REDIS_URL se usa channels_redis; si no, fallback a memoria.
-REDIS_URL = config('REDIS_URL', default='')
+# Toggle explícito: solo activamos Redis si CHANNELS_ENABLE_REDIS=true
+CHANNELS_ENABLE_REDIS = config('CHANNELS_ENABLE_REDIS', default=False, cast=bool)
+REDIS_URL = config('REDIS_URL', default='') if CHANNELS_ENABLE_REDIS else ''
+_redis_fallback_reason = None
 if REDIS_URL:
-    # Formato típico: redis://:password@host:6379/0
+    # Prueba rápida de conectividad sincrónica para decidir si usamos Redis o no.
+    try:
+        import redis  # paquete sync
+        from urllib.parse import urlparse
+        parsed = urlparse(REDIS_URL)
+        # Opciones de timeout cortas para no bloquear el arranque
+        _ssl = parsed.scheme == 'rediss'
+        test_client = redis.Redis.from_url(REDIS_URL, socket_connect_timeout=1, socket_timeout=1, ssl=_ssl)
+        test_client.ping()
+    except Exception as e:  # pragma: no cover - solo en despliegue
+        _redis_fallback_reason = str(e)
+        REDIS_URL = ''  # forzar fallback a memoria
+        print(f"[settings] Redis no disponible, usando InMemoryChannelLayer. Motivo: {_redis_fallback_reason}")
+
+if REDIS_URL:
     CHANNEL_LAYERS = {
         'default': {
             'BACKEND': 'channels_redis.core.RedisChannelLayer',
