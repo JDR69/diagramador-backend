@@ -1,5 +1,6 @@
 import json
 import asyncio
+import time
 from channels.generic.websocket import AsyncWebsocketConsumer
 import traceback
 
@@ -25,6 +26,10 @@ class CollaborationConsumer(AsyncWebsocketConsumer):
 
             await self.accept()
             print(f"[WS] connected diagram_id={self.diagram_id} channel={self.channel_name}")
+
+            # Inicializar control de logging para rate-limit
+            self._last_log_ts = 0.0
+            self._log_counter = 0
 
             # Anunciar que un usuario se unió
             await self._broadcast_internal('user_joined', {"userId": self.channel_name})
@@ -69,7 +74,16 @@ class CollaborationConsumer(AsyncWebsocketConsumer):
         event_type = data.get('type')
         # Aceptar tanto 'payload' como 'data' (flexibilidad con el frontend)
         payload = data.get('payload') or data.get('data') or {}
-        print(f"[WS] recv type={event_type} diagram={getattr(self,'diagram_id',None)}")
+        # Rate limiting del log para eventos muy frecuentes (ej. drag produce muchos class_update)
+        if event_type == 'class_update':
+            now = time.time()
+            self._log_counter += 1
+            # Log solo si pasaron >=0.3s desde el último log o cada 25º mensaje
+            if (now - getattr(self, '_last_log_ts', 0)) >= 0.3 or (self._log_counter % 25) == 0:
+                print(f"[WS] recv type=class_update diagram={getattr(self,'diagram_id',None)} count={self._log_counter}")
+                self._last_log_ts = now
+        else:
+            print(f"[WS] recv type={event_type} diagram={getattr(self,'diagram_id',None)}")
 
         # Adjuntar emisor
         if isinstance(payload, dict):
