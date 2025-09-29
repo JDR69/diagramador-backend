@@ -232,9 +232,8 @@ class ServicioDiagrama:
     def obtener_diagrama_con_detalles(self, diagrama_id: str) -> Optional[Diagrama]:
         """Obtener diagrama con todos los datos relacionados"""
         diagrama = self.repositorio_diagrama.get_with_details(diagrama_id)
-        # Debugear las relaciones
         if diagrama:
-            print(f"Relaciones: {list(diagrama.relationships.all())}")
+            logger.debug(f"[diagram.service] relaciones_count={diagrama.relationships.count()} id={diagrama_id}")
         return diagrama
 
     def listar_diagramas(self, usuario=None, es_publico=None) -> List[Diagrama]:

@@ -56,15 +56,18 @@ class DiagramViewSet(viewsets.ModelViewSet):
     def create(self, request):
         """Crear un nuevo diagrama"""
         try:
+            import time
             from django.db import connection
-            logger.info(f"Creando diagrama: {request.data}")
+            t0 = time.perf_counter()
+            logger.info(f"[diagram.create] inicio payload_keys={list(request.data.keys())}")
             
             serializador = self.get_serializer(data=request.data)
             serializador.is_valid(raise_exception=True)
             
             diagrama = self.servicio.crear_diagrama(serializador.validated_data)
             serializador_respuesta = SerializadorDiagrama(diagrama)
-            
+            dt = (time.perf_counter() - t0) * 1000
+            logger.info(f"[diagram.create] ok id={diagrama.id} tiempo_ms={dt:.1f}")
             connection.close()
             return Response(serializador_respuesta.data, status=status.HTTP_201_CREATED)
             
@@ -80,8 +83,10 @@ class DiagramViewSet(viewsets.ModelViewSet):
     def retrieve(self, request, pk=None):
         """Obtener diagrama con detalles"""
         try:
+            import time
             from django.db import connection
-            logger.info(f"Obteniendo diagrama: {pk}")
+            t0 = time.perf_counter()
+            logger.info(f"[diagram.retrieve] inicio id={pk}")
             
             diagrama = self.servicio.obtener_diagrama_con_detalles(pk)
             if not diagrama:
@@ -92,6 +97,8 @@ class DiagramViewSet(viewsets.ModelViewSet):
                 )
             
             serializador = SerializadorDiagrama(diagrama)
+            dt = (time.perf_counter() - t0) * 1000
+            logger.info(f"[diagram.retrieve] ok id={pk} tiempo_ms={dt:.1f}")
             connection.close()
             return Response(serializador.data)
             
