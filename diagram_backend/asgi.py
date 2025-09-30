@@ -4,7 +4,7 @@ from django.core.asgi import get_asgi_application
 from channels.routing import ProtocolTypeRouter, URLRouter
 from channels.auth import AuthMiddlewareStack
 from django.urls import path
-from backend.apps.diagrams import WebSocket
+from apps.diagrams import WebSocket
 from django.conf import settings
 from importlib import import_module
 
@@ -16,7 +16,7 @@ django_app = get_asgi_application()
 try:
 	layer_backend = settings.CHANNEL_LAYERS['default']['BACKEND']
 	print(f"backend: {layer_backend}")
-except Exception:  # pragma: no cover
+except Exception:  
 	pass
 
 # Unificamos HTTP (Django) + WebSockets (Channels)
