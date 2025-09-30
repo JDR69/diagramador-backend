@@ -127,7 +127,6 @@ class CollaborationConsumer(AsyncWebsocketConsumer):
             }))
         except Exception as e:
             print(f" fallo al enviar: {e}")
-
     async def _heartbeat(self):
         """Envía un ping cada 25s.
 
