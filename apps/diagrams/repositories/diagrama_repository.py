@@ -11,7 +11,22 @@ class RepositorioDiagrama:
     
     def create(self, data: Dict[str, Any]) -> Diagrama:
         """Crear un nuevo diagrama"""
-        return Diagrama.objects.create(**data)
+        # Separar los campos relacionados de los campos básicos
+        classes_data = data.pop('classes', [])
+        relationships_data = data.pop('relationships', [])
+        
+        # Crear el diagrama sin los campos relacionados
+        diagrama = Diagrama.objects.create(**data)
+        
+        # Asignar las clases si existen
+        if classes_data:
+            diagrama.classes.set(classes_data)
+        
+        # Asignar las relaciones si existen
+        if relationships_data:
+            diagrama.relationships.set(relationships_data)
+        
+        return diagrama
     
     def get_by_id(self, diagram_id: str) -> Optional[Diagrama]:
         """Obtener diagrama por ID"""
