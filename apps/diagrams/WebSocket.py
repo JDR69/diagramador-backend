@@ -3,6 +3,7 @@ import asyncio
 import time
 from channels.generic.websocket import AsyncWebsocketConsumer
 import traceback
+from typing import Any, Dict
 
 # Consumidor WebSocket para colaboración en diagramas
 class CollaborationConsumer(AsyncWebsocketConsumer):
@@ -89,6 +90,23 @@ class CollaborationConsumer(AsyncWebsocketConsumer):
         # Adjuntar emisor
         if isinstance(payload, dict):
             payload.setdefault('userId', self.channel_name)
+
+        # Optimizaciones de diffs: para class_update / relationship_update si incluyen 'previous'
+        # calculamos únicamente los campos nuevos/cambiados y enviamos 'delta'.
+        # El frontend puede aplicar delta si existe, o usar payload completo si no.
+        if event_type in ("class_update", "relationship_update") and isinstance(payload, dict):
+            prev = payload.get('previous')
+            curr = payload.get('current') or payload.get('data') or payload
+            if isinstance(prev, dict) and isinstance(curr, dict):
+                delta: Dict[str, Any] = {}
+                for k, v in curr.items():
+                    if prev.get(k) != v:
+                        delta[k] = v
+                # Sólo añadimos delta si hay diferencias y no es todo el objeto
+                if delta and len(delta) < len(curr):
+                    payload['delta'] = delta
+            # Limpiar claves grandes opcionales que ya no necesitemos (para reducir broadcast)
+            # Mantener 'current' si el frontend lo usa como fuente de verdad; si no, se podría quitar.
 
         # Handshake: request estado inicial
         if event_type == 'request_initial_state':

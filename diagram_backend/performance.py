@@ -1,16 +1,17 @@
 import time
 import logging
+import os
 from typing import Callable
 from django.http import HttpRequest, HttpResponse
 
 logger = logging.getLogger(__name__)
 
-SLOW_THRESHOLD_MS = 800  # ajustar según necesidad
+SLOW_THRESHOLD_MS = float(os.environ.get("PERF_SLOW_MS", "800"))  # Ajustable vía env PERF_SLOW_MS
 
 class PerformanceMiddleware:
     """Middleware simple para loguear duración de requests.
     Registra toda request y destaca las lentas (>SLOW_THRESHOLD_MS).
-    """
+    Ajusta el umbral exportando PERF_SLOW_MS (en ms)."""
     def __init__(self, get_response: Callable):
         self.get_response = get_response
 

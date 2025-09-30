@@ -18,7 +18,7 @@ for _probe_ip in ('169.254.130.1', '169.254.130.2', '169.254.130.3'):
     if _probe_ip not in ALLOWED_HOSTS:
         ALLOWED_HOSTS.append(_probe_ip)
 if DEBUG:
-    for host in ('127.0.0.1', 'localhost'):
+    for host in ('127.0.0.1', 'localhost','169.254.129.3'):
         if host not in ALLOWED_HOSTS:
             ALLOWED_HOSTS.append(host)
 INSTALLED_APPS = [
