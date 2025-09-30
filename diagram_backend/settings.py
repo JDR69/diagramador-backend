@@ -89,7 +89,7 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # CORS
 ############################################
 # FRONTEND_ORIGINS= http://localhost:3000,https://tu-dominio.com
-_frontend_origins = config('FRONTEND_ORIGINS', default='', cast=str)
+_frontend_origins = config('FRONTEND_ORIGINS', default='https://diagram-software.netlify.app', cast=str)
 if _frontend_origins.strip():
     # Lista explícita
     CORS_ALLOWED_ORIGINS = [o.strip() for o in _frontend_origins.split(',') if o.strip()]
