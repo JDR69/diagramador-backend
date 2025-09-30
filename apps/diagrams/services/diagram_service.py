@@ -55,27 +55,27 @@ class ServicioDiagrama:
                 if not diagrama:
                     raise ValueError(f"Diagrama con ID {diagrama_id} no encontrado")
                 
-                logger.info(f"Actualizando diagrama {diagrama_id} con datos: {datos}")
+                logger.debug(f"[diagrama.actualizar] id={diagrama_id}")
                 
                 # Actualizar info básica solo si está presente
                 for campo in ['name', 'description', 'is_public']:
                     if campo in datos:
                         setattr(diagrama, campo, datos[campo])
-                        logger.info(f"Campo {campo} actualizado a: {datos[campo]}")
+                        logger.debug(f"[diagrama.actualizar] campo {campo}")
                 
                 diagrama.save()
 
                 # Actualizar clases y atributos solo si están en los datos
                 if 'classes' in datos and datos['classes']:
-                    logger.info(f"Actualizando {len(datos['classes'])} clases")
+                    logger.debug(f"[diagrama.actualizar] clases={len(datos['classes'])}")
                     self._actualizar_clases_y_atributos(diagrama, datos['classes'])
 
                 # Actualizar relaciones solo si están en los datos
                 if 'relationships' in datos and datos['relationships']:
-                    logger.info(f"Actualizando {len(datos['relationships'])} relaciones")
+                    logger.debug(f"[diagrama.actualizar] relaciones={len(datos['relationships'])}")
                     self._actualizar_relaciones(diagrama, datos['relationships'])
 
-                logger.info(f"Diagrama {diagrama_id} actualizado exitosamente")
+                logger.debug(f"[diagrama.actualizar] ok id={diagrama_id}")
                 return diagrama
                 
         except Exception as e:
@@ -160,17 +160,17 @@ class ServicioDiagrama:
         try:
             # Solo eliminar relaciones si hay nuevas relaciones para crear
             if datos_relaciones:
-                logger.info(f"Eliminando {diagrama.relationships.count()} relaciones existentes")
+                logger.debug(f"[diagrama.relaciones] limpiar={diagrama.relationships.count()}")
                 diagrama.relationships.all().delete()
 
                 # Crear mapeo de clases
                 mapeo_clases_id = {str(cls.id): cls for cls in diagrama.classes.all()}
-                logger.info(f"Clases disponibles: {list(mapeo_clases_id.keys())}")
+                logger.debug(f"[diagrama.relaciones] clases={len(mapeo_clases_id)}")
 
                 relaciones_creadas = 0
                 for i, rel_data in enumerate(datos_relaciones):
                     try:
-                        logger.info(f"Procesando relación {i}: {rel_data}")
+                        logger.debug(f"[diagrama.relaciones] procesando {i}")
                         
                         # Obtener IDs de forma más robusta
                         desde_id = str(rel_data.get('from', '')).strip()
@@ -205,15 +205,15 @@ class ServicioDiagrama:
                             cardinality_to=cardinalidad.get('to', '1')
                         )
                         relaciones_creadas += 1
-                        logger.info(f"Relación creada: {relacion.id} ({desde_clase.name} -> {hasta_clase.name})")
+                        logger.debug(f"[diagrama.relaciones] creada id={relacion.id}")
                         
                     except Exception as e:
                         logger.error(f"Error procesando relación {i}: {str(e)}")
                         continue
                 
-                logger.info(f"Se crearon {relaciones_creadas} relaciones de {len(datos_relaciones)} intentadas")
+                logger.debug(f"[diagrama.relaciones] creadas={relaciones_creadas}/{len(datos_relaciones)}")
             else:
-                logger.info("No hay relaciones para actualizar")
+                logger.debug("[diagrama.relaciones] sin cambios")
                 
         except Exception as e:
             logger.error(f"Error actualizando relaciones: {str(e)}", exc_info=True)

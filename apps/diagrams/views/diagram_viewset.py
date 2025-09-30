@@ -48,7 +48,7 @@ class DiagramViewSet(viewsets.ModelViewSet):
             import time
             from django.db import connection
             t0 = time.perf_counter()
-            logger.info(f"[diagram.create] inicio payload_keys={list(request.data.keys())}")
+            logger.info(f"[diagrama.crear] inicio campos={list(request.data.keys())}")
             
             serializador = self.get_serializer(data=request.data)
             serializador.is_valid(raise_exception=True)
@@ -56,7 +56,7 @@ class DiagramViewSet(viewsets.ModelViewSet):
             diagrama = self.servicio.crear_diagrama(serializador.validated_data)
             serializador_respuesta = SerializadorDiagrama(diagrama)
             dt = (time.perf_counter() - t0) * 1000
-            logger.info(f"[diagram.create] ok id={diagrama.id} tiempo_ms={dt:.1f}")
+            logger.info(f"[diagrama.crear] ok id={diagrama.id} ms={dt:.1f}")
             connection.close()
             return Response(serializador_respuesta.data, status=status.HTTP_201_CREATED)
             
@@ -75,7 +75,7 @@ class DiagramViewSet(viewsets.ModelViewSet):
             import time
             from django.db import connection
             t0 = time.perf_counter()
-            logger.info(f"[diagram.retrieve] inicio id={pk}")
+            logger.debug(f"[diagrama.obtener] id={pk}")
             
             diagrama = self.servicio.obtener_diagrama_con_detalles(pk)
             if not diagrama:
@@ -87,7 +87,7 @@ class DiagramViewSet(viewsets.ModelViewSet):
             
             serializador = SerializadorDiagrama(diagrama)
             dt = (time.perf_counter() - t0) * 1000
-            logger.info(f"[diagram.retrieve] ok id={pk} tiempo_ms={dt:.1f}")
+            logger.debug(f"[diagrama.obtener] ok id={pk} ms={dt:.1f}")
             connection.close()
             return Response(serializador.data)
             
@@ -104,7 +104,7 @@ class DiagramViewSet(viewsets.ModelViewSet):
         """Actualizar diagrama"""
         try:
             from django.db import connection
-            logger.info(f"DATOS RECIBIDOS EN PATCH: {request.data}")
+            logger.debug(f"[diagrama.patch] datos recibidos")
             
             # Obtener instancia de forma más segura
             try:

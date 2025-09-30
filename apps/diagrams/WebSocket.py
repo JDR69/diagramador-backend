@@ -17,15 +17,15 @@ class CollaborationConsumer(AsyncWebsocketConsumer):
         try:
             self.diagram_id = self.scope['url_route']['kwargs'].get('diagram_id')
             self.room_group_name = f'collaboration_{self.diagram_id}'
-            print(f"[WS] connect attempt diagram_id={self.diagram_id} channel={self.channel_name}")
+            print(f"[WS] conexión intentando diagrama={self.diagram_id} canal={self.channel_name}")
 
             if not self.channel_layer:
-                print("[WS][WARN] channel_layer no disponible, operando en modo local (no multi-proceso)")
+                print("[WS][AVISO] capa de canales no disponible, modo local (sin multiproceso)")
             else:
                 await self.channel_layer.group_add(self.room_group_name, self.channel_name)
 
             await self.accept()
-            print(f"[WS] connected diagram_id={self.diagram_id} channel={self.channel_name}")
+            print(f"[WS] conectado diagrama={self.diagram_id} canal={self.channel_name}")
 
             # Inicializar control de logging para rate-limit
             self._last_log_ts = 0.0
@@ -37,12 +37,12 @@ class CollaborationConsumer(AsyncWebsocketConsumer):
             # Iniciar heartbeat usando asyncio (intervalo estable)
             self.heartbeat_task = asyncio.create_task(self._heartbeat())
         except Exception as e:
-            print(f"[WS][ERROR] connect failed: {e}\n{traceback.format_exc()}")
+            print(f"[WS][ERROR] fallo en conexión: {e}\n{traceback.format_exc()}")
             await self.close(code=4400)
 
     async def disconnect(self, close_code):
         try:
-            print(f"[WS] disconnect diagram_id={getattr(self,'diagram_id',None)} channel={self.channel_name} code={close_code}")
+            print(f"[WS] desconectar diagrama={getattr(self,'diagram_id',None)} canal={self.channel_name} código={close_code}")
             if hasattr(self, 'heartbeat_task'):
                 self.heartbeat_task.cancel()
             # Avisar salida sólo si hubo connect exitoso
@@ -51,7 +51,7 @@ class CollaborationConsumer(AsyncWebsocketConsumer):
             if hasattr(self, 'room_group_name') and self.channel_layer:
                 await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
         except Exception as e:
-            print(f"[WS][ERROR] during disconnect: {e}")
+            print(f"[WS][ERROR] error en desconexión: {e}")
 
     async def receive(self, text_data):
         """Procesa mensajes entrantes del cliente y los redistribuye.
@@ -68,7 +68,7 @@ class CollaborationConsumer(AsyncWebsocketConsumer):
         try:
             data = json.loads(text_data)
         except Exception as e:
-            print(f"[WS][ERROR] invalid JSON: {e} raw={text_data[:150]}")
+            print(f"[WS][ERROR] JSON inválido: {e} dato={text_data[:150]}")
             return
 
         event_type = data.get('type')
@@ -80,10 +80,11 @@ class CollaborationConsumer(AsyncWebsocketConsumer):
             self._log_counter += 1
             # Log solo si pasaron >=0.3s desde el último log o cada 25º mensaje
             if (now - getattr(self, '_last_log_ts', 0)) >= 0.3 or (self._log_counter % 25) == 0:
-                print(f"[WS] recv type=class_update diagram={getattr(self,'diagram_id',None)} count={self._log_counter}")
+                print(f"[WS] evento class_update diagrama={getattr(self,'diagram_id',None)} total={self._log_counter}")
                 self._last_log_ts = now
         else:
-            print(f"[WS] recv type={event_type} diagram={getattr(self,'diagram_id',None)}")
+            if event_type not in ('cursor_move', 'ping'):
+                print(f"[WS] evento {event_type} diagrama={getattr(self,'diagram_id',None)}")
 
         # Adjuntar emisor
         if isinstance(payload, dict):
@@ -125,7 +126,7 @@ class CollaborationConsumer(AsyncWebsocketConsumer):
                 'payload': event['payload'],
             }))
         except Exception as e:
-            print(f"[WS][ERROR] send failure: {e}")
+            print(f"[WS][ERROR] fallo al enviar: {e}")
 
     async def _heartbeat(self):
         """Envía un ping cada 25s.
