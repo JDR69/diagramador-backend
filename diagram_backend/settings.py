@@ -126,7 +126,6 @@ if REDIS_URL:
     except Exception as e:  # pragma: no cover - solo en despliegue
         _redis_fallback_reason = str(e)
         REDIS_URL = ''  # forzar fallback a memoria
-        print(f"[settings] Redis no disponible, usando InMemoryChannelLayer. Motivo: {_redis_fallback_reason}")
 
 if REDIS_URL:
     CHANNEL_LAYERS = {
@@ -177,5 +176,3 @@ LOGGING = {
     }
 }
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-if DEBUG:  # pragma: no cover
-    print('[settings] Loaded clean UTF-8 settings file | Redis:', 'ON' if REDIS_URL else 'IN-MEMORY')
